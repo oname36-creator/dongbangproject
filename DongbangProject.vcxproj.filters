@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Engine">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Client">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{e44671d0-8dc0-48f4-8fae-4a1cba59db65}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Engine\Actor.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\ColliderCircle.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\CollisionManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Component.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\DataManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\DataObject.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\ImageRenderer.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\InputManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\ObjectPool.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\ResourceManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Singleton.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\SpriteRenderer.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\Texture.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\TimeManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Airplane.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Background.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Bullet.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Effect.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Enemy.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Game.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Player.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\ResourceData.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Scene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\UIManager.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\WorldBG.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\Util.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\framework.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\DongbangProject.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\pch.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\Resource.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Common\targetver.h">
+      <Filter>Common</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Engine\Actor.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\ColliderCircle.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\CollisionManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Component.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\DataManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\DataObject.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\ImageRenderer.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\InputManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\ObjectPool.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\ResourceManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\SpriteRenderer.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\Texture.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\TimeManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Airplane.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Background.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Bullet.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Effect.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Enemy.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Game.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Player.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\ResourceData.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Scene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\UIManager.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\WorldBG.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\Util.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\DongbangProject.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Common\pch.cpp">
+      <Filter>Common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="Client\DongbangProject.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="Client\DongbangProject.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="Client\small.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
+</Project>
