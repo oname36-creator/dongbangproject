@@ -2,8 +2,9 @@
 #include "Enemy.h"
 #include "Bullet.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "TimeManager.h"
+#include "colliderCircle.h"
 
 void Enemy::Init(Vector pos, wstring key)
 {
@@ -15,6 +16,7 @@ void Enemy::Init(Vector pos, wstring key)
 		{
 			shootBullet();
 		}, 1.0f, true);
+	
 }
 
 void Enemy::Destroy()

@@ -76,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;$(ProjectDir)Client;$(ProjectDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -91,6 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;$(ProjectDir)Client;$(ProjectDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -122,6 +124,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)Engine;$(ProjectDir)Client;$(ProjectDir)Common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
@@ -143,6 +146,7 @@
     <ClInclude Include="Client\Enemy.h" />
     <ClInclude Include="Common\framework.h" />
     <ClInclude Include="Client\Game.h" />
+    <ClInclude Include="Client\GameScene.h" />
     <ClInclude Include="Client\DongbangProject.h" />
     <ClInclude Include="Engine\ImageRenderer.h" />
     <ClInclude Include="Engine\InputManager.h" />
@@ -175,6 +179,7 @@
     <ClCompile Include="Client\Effect.cpp" />
     <ClCompile Include="Client\Enemy.cpp" />
     <ClCompile Include="Client\Game.cpp" />
+    <ClCompile Include="Client\GameScene.cpp" />
     <ClCompile Include="Client\DongbangProject.cpp" />
     <ClCompile Include="Engine\ImageRenderer.cpp" />
     <ClCompile Include="Engine\InputManager.cpp" />

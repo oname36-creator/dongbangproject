@@ -85,6 +85,9 @@
     <ClInclude Include="Client\Scene.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="Client\GameScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
     <ClInclude Include="Client\UIManager.h">
       <Filter>Client</Filter>
     </ClInclude>
@@ -175,6 +178,9 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\Scene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\GameScene.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\UIManager.cpp">

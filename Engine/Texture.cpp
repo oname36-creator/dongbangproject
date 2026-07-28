@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Texture.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 
 void Texture::Load(wstring texturePath, int32 transparent, int32 row, int32 col, float dur)
 {

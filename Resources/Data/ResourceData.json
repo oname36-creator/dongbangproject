@@ -1,0 +1,14 @@
+{
+  "GameScene": {
+    "Player": { "fileName": "Player.bmp", "transparent": [255, 0, 255] },
+    "Enemy1": { "fileName": "Enemy1.bmp", "transparent": [255, 0, 255] },
+    "Enemy2": { "fileName": "Enemy2.bmp", "transparent": [255, 0, 255] },
+    "Enemy3": { "fileName": "Enemy3.bmp", "transparent": [255, 0, 255] },
+    "Enemy4": { "fileName": "Enemy4.bmp", "transparent": [255, 0, 255] },
+    "PlayerBullet": { "fileName": "PlayerBullet.bmp", "transparent": [255, 0, 255] },
+    "EnemyBullet": { "fileName": "EnemyBullet.bmp", "transparent": [0, 0, 0], "countX": 5, "countY": 1 },
+    "Effect": { "fileName": "explosion.bmp", "transparent": [0, 0, 0], "countX": 6, "countY": 2, "dur": 2.0 },
+    "PlayerHP": { "fileName": "PlayerHP.bmp", "transparent": [255, 0, 255] },
+    "World_BG": { "fileName": "World_BG.bmp" }
+  }
+}

@@ -2,7 +2,7 @@
 #include "Player.h"
 #include "InputManager.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "Enemy.h"
 #include "Bullet.h"
 #include "ColliderCircle.h"
@@ -15,6 +15,7 @@ void Player::Init()
 	if (_collider)
 	{
 		_collider->SetCheckCell(true);
+		_collider->Init(this,4);
 	}
 
 	// TODO(1주차 Day3~4): 플레이어 히트박스를 작게 줄일 것 (기획서 4장)
@@ -29,6 +30,16 @@ void Player::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
 
+	if(_invincibleTime > 0.f)
+	{
+		_invincibleTime -= deltaTime;
+	}
+
+	if(_fireCooldown > 0.f)
+	{
+		_fireCooldown -= deltaTime;
+	}
+
 	// TODO(1주차 Day3~4): 저속 이동 구현 (기획서 5장)
 	//  목표: Shift를 누르고 있는 동안 이동 속도를 40~50%로 낮춘다.
 	//        탄막 사이를 정밀하게 빠져나가기 위한 필수 기능이다.
@@ -36,7 +47,12 @@ void Player::Update(float deltaTime)
 	//        여기서 이번 프레임 속도를 한 번 계산해두고(예: speed = _moveSpeed * (느림? 0.45f : 1.f))
 	//        아래 4개 move() 호출이 그 값을 쓰도록 바꾼다.
 	//  선행: Engine/InputManager.h의 KeyType에 Shift가 없다. 거기부터 추가할 것.
-
+	if(InputManager::GetInstance().GetButtonPressed(KeyType::LOW_SPEED))
+	{
+		_moveSpeed = _moveSpeed * 0.5f;
+	}
+	else
+		_moveSpeed = _moveSpeed / 0.5f;
 	// TODO(1주차 Day3~4): 무적 시간 처리 (기획서 5장, 피격 후 1.5~2초)
 	//  Player.h에 추가할 _invincibleTime을 여기서 deltaTime만큼 깎아준다.
 	//  0보다 크면 무적 상태 → takeDamage()에서 피해를 무시한다.
@@ -69,9 +85,11 @@ void Player::Update(float deltaTime)
 	//        0 이하이고 키가 눌려 있으면(GetButtonPressed) 발사 + 쿨다운 리셋.
 	//  힌트: 간격 0.1초 정도부터 시작해서 감으로 조절해라.
 	//  참고: 발사 키는 기획서상 Z다. SpaceBar를 Z로 바꾸려면 KeyType에 Z를 먼저 추가해야 한다.
-	if (InputManager::GetInstance().GetButtonDown(KeyType::SpaceBar))
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK))
 	{
+
 		Game::GetInstance().GetScene()->CreateBullet(GetPos(), BulletType::Player);
+		_fireCooldown = _fireInterval; 
 	}
 
 	// TODO(1주차 Day3~4): 폭탄 구현 (기획서 5장)
@@ -145,13 +163,17 @@ void Player::move(float x, float y)
 //        (Scene::removeActor()가 _player를 nullptr로 밀어주긴 하지만, 부활 처리가 복잡해진다)
 void Player::takeDamage()
 {
-	_hp -= 10;
+	if(_invincibleTime > 0.f)
+	return;
+
+	_lives -= 1;
+	_invincibleTime = 1.5f;
 
 	// 터지는 이펙트 추가
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());
 
 	// 체력이 0이면, 스스로 삭제
-	if (_hp <= 0)
+	if (_lives <= 0)
 	{
 		Destroy();
 	}

@@ -5,7 +5,7 @@
 #include "Util.h"
 #include "ResourceManager.h"
 #include "Texture.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "CollisionManager.h"
 #include "DataManager.h"
 #include "UIManager.h"
@@ -52,29 +52,22 @@ void Game::Init(HWND hwnd)
 	//        Resources/Data/ResourceData.json 을 먼저 채워야 화면에 뭐라도 나온다.
 	wchar_t buffer[MAX_PATH];
 	DWORD length = ::GetCurrentDirectory(MAX_PATH, buffer);
-	fs::path currentPath = fs::path(buffer) / L"../Resources/";
+	fs::path currentPath = fs::path(buffer) / L"Resources/";
 	ResourceManager::GetInstance().Init(hwnd, currentPath);
 
 	// DataManager 초기화
 	DataManager::GetInstance().Init(currentPath);
 	DataManager::GetInstance().Load();
 
-	// Scene 초기화
-	// TODO(1주차 Day1~2): Game이 씬을 직접 소유하지 않도록 구조를 바꿀 것
-	//  현재: Game이 Scene 1개를 new로 만들어 끝까지 들고 있다 → 타이틀/결과 화면으로 넘어갈 수 없다.
-	//  목표(기획서 3장): TitleScene / GameScene / ResultScene 전환.
-	//  할 일:
-	//   1) Scene을 추상 베이스로 만든다 (virtual ~Scene(), virtual Init/Cleanup/Update/Render)
-	//   2) 지금 Scene의 내용을 GameScene으로 옮기고, TitleScene/ResultScene은 껍데기로 추가한다
-	//      (배경 + 안내 문구 + 키 입력 하나면 충분하다. 여기서 시간 쓰지 말 것)
-	//   3) Engine/ 에 SceneManager 싱글톤을 만들고, 아래 2줄과 Cleanup/Update/Render의
-	//      _scene 접근을 전부 SceneManager 호출로 교체한다
-	//  함정: 씬 교체를 '즉시' 하면 안 된다. Update() 도중에 현재 씬을 delete하면
-	//        호출 스택이 이미 죽은 객체 위에서 계속 돌아 크래시한다.
-	//        → '예약해두고 프레임 끝에서 교체'하는 방식을 써라.
-	//        이 프로젝트에 이미 같은 패턴이 있다: Scene::_reservedAdd / _reservedRemove 를 참고.
-	_scene = new Scene();
-	_scene->Init();
+	// GameScene 초기화
+	// Scene(얇은 베이스)/GameScene(실제 내용) 분리는 끝났다. 지금은 씬이 GameScene
+	// 하나뿐이라 Game이 GameScene*을 직접 들고 있다.
+	//
+	// TODO(2주차 이후, TitleScene/ResultScene을 실제로 붙일 때): SceneManager를 만들고
+	//  '씬 전환'을 프레임 끝에서 처리하도록 바꿀 것 (Update() 도중 현재 씬을 delete하면
+	//  크래시한다 — GameScene::_reservedAdd/_reservedRemove 같은 예약 패턴을 참고).
+	_gamescene = new GameScene();
+	_gamescene->Init();
 
 	// CollisionManager 초기화
 	CollisionManager::GetInstance().Init();
@@ -83,9 +76,9 @@ void Game::Init(HWND hwnd)
 
 void Game::Cleanup()
 {
-	_scene->Cleanup();
-	delete _scene;
-	_scene = nullptr;
+	_gamescene->Cleanup();
+	delete _gamescene;
+	_gamescene = nullptr;
 
 	// 매니저들 각자 정리가 필요한것들은 정리해준다.
 	ResourceManager::GetInstance().Cleanup();
@@ -100,9 +93,9 @@ void Game::Update()
 	InputManager::GetInstance().Update();
 
 	// Scene 업데이트
-	if (_scene)
+	if (_gamescene)
 	{
-		_scene->Update(TimeManager::GetInstance().GetDT());
+		_gamescene->Update(TimeManager::GetInstance().GetDT());
 	}
 
 	// 모든 Update가 끝나고 좌표 갱신이 완료된 후, 충돌체크 수행
@@ -114,9 +107,9 @@ void Game::Render()
 {
 	// 각종 렌더링 로직 처리
 	// Scene의 모든 객체 렌더링
-	if (_scene)
+	if (_gamescene)
 	{
-		_scene->Render(_hdcBack);
+		_gamescene->Render(_hdcBack);
 	}
 
 	CollisionManager::GetInstance().Render(_hdcBack);

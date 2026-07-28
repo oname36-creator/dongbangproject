@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "CollisionManager.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "Actor.h"
 #include "ColliderCircle.h"
 #include "InputManager.h"

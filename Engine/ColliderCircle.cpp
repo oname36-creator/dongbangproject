@@ -2,7 +2,7 @@
 #include "ColliderCircle.h"
 #include "Actor.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 
 void ColliderCircle::Init(Actor* owner, int radius)
 {

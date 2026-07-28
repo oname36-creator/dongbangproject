@@ -22,6 +22,9 @@ enum class KeyType
 	KEY_2 = '2',
 
 	// TODO(1주차 Day3~4): 기획서 5장 조작에 필요한 키가 빠져 있다. 여기부터 추가할 것.
+	LOW_SPEED = VK_SHIFT,
+	ATTACK = 'Z',
+	BOOM = 'X',
 	//  - 저속 이동 : Shift (VK_SHIFT)
 	//  - 기본 공격 : Z ('Z')   ※ 지금은 SpaceBar로 쏘고 있다
 	//  - 폭탄      : X ('X')

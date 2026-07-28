@@ -3,7 +3,7 @@
 #include "ResourceManager.h"
 #include "Texture.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "Player.h"
 
 void UIManager::Init()
@@ -27,7 +27,7 @@ void UIManager::Render(HDC hdc)
 	if (_hpTexture == nullptr)
 		return;
 
-	Scene* scene = Game::GetInstance().GetScene();
+	GameScene* scene = Game::GetInstance().GetScene();
 	if (scene == nullptr)
 		return;
 
