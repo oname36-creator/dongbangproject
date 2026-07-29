@@ -81,6 +81,7 @@ void Enemy::OnEnter(Actor* other) // other : Player
 			Game::GetInstance().GetScene()->CreateEffect(GetPos());
 
 			// 점수 증가
+			Game::GetInstance().GetScene()->AddScore(100);
 		}
 	}
 }

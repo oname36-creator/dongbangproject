@@ -9,6 +9,8 @@
 #include "CollisionManager.h"
 #include "DataManager.h"
 #include "UIManager.h"
+#include "SceneManager.h"
+#include "TitleScene.h"
 
 void Game::Init(HWND hwnd)
 {
@@ -66,8 +68,8 @@ void Game::Init(HWND hwnd)
 	// TODO(2주차 이후, TitleScene/ResultScene을 실제로 붙일 때): SceneManager를 만들고
 	//  '씬 전환'을 프레임 끝에서 처리하도록 바꿀 것 (Update() 도중 현재 씬을 delete하면
 	//  크래시한다 — GameScene::_reservedAdd/_reservedRemove 같은 예약 패턴을 참고).
-	_gamescene = new GameScene();
-	_gamescene->Init();
+
+	SceneManager::GetInstance().ChangeScene(new TitleScene());
 
 	// CollisionManager 초기화
 	CollisionManager::GetInstance().Init();
@@ -76,9 +78,7 @@ void Game::Init(HWND hwnd)
 
 void Game::Cleanup()
 {
-	_gamescene->Cleanup();
-	delete _gamescene;
-	_gamescene = nullptr;
+	SceneManager::GetInstance().Cleanup();
 
 	// 매니저들 각자 정리가 필요한것들은 정리해준다.
 	ResourceManager::GetInstance().Cleanup();
@@ -93,10 +93,7 @@ void Game::Update()
 	InputManager::GetInstance().Update();
 
 	// Scene 업데이트
-	if (_gamescene)
-	{
-		_gamescene->Update(TimeManager::GetInstance().GetDT());
-	}
+	SceneManager::GetInstance().Update(TimeManager :: GetInstance().GetDT());
 
 	// 모든 Update가 끝나고 좌표 갱신이 완료된 후, 충돌체크 수행
 	UIManager::GetInstance().Update(TimeManager::GetInstance().GetDT());
@@ -107,10 +104,7 @@ void Game::Render()
 {
 	// 각종 렌더링 로직 처리
 	// Scene의 모든 객체 렌더링
-	if (_gamescene)
-	{
-		_gamescene->Render(_hdcBack);
-	}
+	SceneManager::GetInstance().Render(_hdcBack);
 
 	CollisionManager::GetInstance().Render(_hdcBack);
 
@@ -127,6 +121,11 @@ void Game::Render()
 	BitBlt(_hdc, 0, 0, _rect.right, _rect.bottom, _hdcBack, 0, 0, SRCCOPY);
 
 	PatBlt(_hdcBack, 0, 0, _rect.right, _rect.bottom, WHITENESS);
-}
 
+	
+}
+class GameScene* Game::GetScene() const
+{
+	return dynamic_cast<GameScene*>(SceneManager::GetInstance().GetCurrentScene());
+}
 

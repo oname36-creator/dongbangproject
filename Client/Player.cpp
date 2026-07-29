@@ -47,35 +47,38 @@ void Player::Update(float deltaTime)
 	//        여기서 이번 프레임 속도를 한 번 계산해두고(예: speed = _moveSpeed * (느림? 0.45f : 1.f))
 	//        아래 4개 move() 호출이 그 값을 쓰도록 바꾼다.
 	//  선행: Engine/InputManager.h의 KeyType에 Shift가 없다. 거기부터 추가할 것.
+		_speed = _moveSpeed;
 	if(InputManager::GetInstance().GetButtonPressed(KeyType::LOW_SPEED))
 	{
-		_moveSpeed = _moveSpeed * 0.5f;
+		_speed *= 0.5f;
 	}
-	else
-		_moveSpeed = _moveSpeed / 0.5f;
 	// TODO(1주차 Day3~4): 무적 시간 처리 (기획서 5장, 피격 후 1.5~2초)
 	//  Player.h에 추가할 _invincibleTime을 여기서 deltaTime만큼 깎아준다.
 	//  0보다 크면 무적 상태 → takeDamage()에서 피해를 무시한다.
 	//  힌트: 무적 중에는 스프라이트를 깜빡이게 하면(짝수 프레임만 그리기) 플레이어가 상태를 알 수 있다.
-
+	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM))
+	{
+		_boom -= 1;
+		Game::GetInstance().GetScene()->ClearEnemyBullets();
+	}
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::W))
 	{
-		move(0, -_moveSpeed * deltaTime);
+		move(0, -_speed * deltaTime);
 	}
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::S))
 	{
-		move(0, _moveSpeed * deltaTime);
+		move(0, _speed * deltaTime);
 	}
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::A))
 	{
-		move(-_moveSpeed * deltaTime, 0);
+		move(-_speed * deltaTime, 0);
 	}
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::D))
 	{
-		move(_moveSpeed * deltaTime, 0);
+		move(_speed * deltaTime, 0);
 	}
 
 	// TODO(1주차 Day3~4): 자동 연사로 바꿀 것 (기획서 5장)
@@ -85,7 +88,7 @@ void Player::Update(float deltaTime)
 	//        0 이하이고 키가 눌려 있으면(GetButtonPressed) 발사 + 쿨다운 리셋.
 	//  힌트: 간격 0.1초 정도부터 시작해서 감으로 조절해라.
 	//  참고: 발사 키는 기획서상 Z다. SpaceBar를 Z로 바꾸려면 KeyType에 Z를 먼저 추가해야 한다.
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK))
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
 	{
 
 		Game::GetInstance().GetScene()->CreateBullet(GetPos(), BulletType::Player);

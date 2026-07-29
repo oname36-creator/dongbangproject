@@ -35,8 +35,10 @@ public:
 	virtual void Init() override;
 	virtual void Cleanup() override;
 
-	void Update(float deltaTime);
+	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
+
+
 
 	// TODO(1주차 Day6~7): GameScene 상태머신을 추가할 것
 	//  목표(기획서 3장): Ready → Playing → Boss → Clear / GameOver
@@ -50,6 +52,20 @@ public:
 	//  힌트: Ready의 '1~2초 대기'는 TimeManager::AddTimer(func, 2.0f, false)로 간단히 된다.
 	//  함정: GameOver 상태에서도 Update가 계속 돌면 적이 계속 스폰된다.
 	//        상태별로 '무엇을 멈출지'를 반드시 정해라.
+	enum class GameSceneState
+	{
+		Ready,
+		Playing,
+		Boss,
+		Clear,
+		GameOver
+	};
+	// WaveEntry/g_waveTable은 GameScene.cpp 상단(파일 스코프)에 정의되어 있다.
+	// 크기를 명시하지 않은 배열(WaveEntry[])은 파일 스코프 상수일 때만 초기화 목록으로
+	// 크기를 유추할 수 있고, 클래스의 일반 멤버로는 쓸 수 없다.
+	struct WaveEntry;
+	GameSceneState _state = GameSceneState::Ready;
+
 
 	// 씬에서 관리되는 Actor중에 하나 삭제해달라고 요청
 	void DeleteActor(class Actor* actor);
@@ -57,6 +73,8 @@ public:
 	void CreateBullet(Vector pos, BulletType type);
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
+
+	void SpawnWave(const WaveEntry& wave);
 
 	// 좌표계 변환해주는 함수
 	Vector ConvertWorldToScreen(Vector worldPos);
@@ -67,6 +85,8 @@ public:
 	int32 GetGridSize() const { return _gridSize; }
 	class Player* GetPlayer() const { return _player; }
 
+	int32 GetScore() const { return _score;}
+	void AddScore(int32 amount) {_score += amount;}
 private:
 	void loadResources();
 	void createObjects();
@@ -74,15 +94,6 @@ private:
 	// actor List / render List 의 동기화를 맞춰주기 위해서, 항상 호출되는 함수
 	void registerActor(Actor* actor);
 	void removeActor(Actor* actor);
-
-	// TODO(1주차 Day6~7): 랜덤 스폰을 '웨이브 테이블'로 교체할 것
-	//  현재: createRandomEnemy()가 2초마다 무작위로 적을 뿌린다 → 스테이지 설계가 불가능하다.
-	//  목표(기획서 7장 Stage 1): 시간대별로 정해진 적이 정해진 위치에 나온다.
-	//  할 일: { 등장시간, 적 종류, 등장위치, 개수 } 구조체의 배열을 만들고,
-	//        스테이지 경과 시간을 누적하며 때가 된 웨이브를 스폰한다.
-	//  힌트: 기획서 5장 설계 원칙대로 JSON 같은 외부 데이터로 빼지 마라.
-	//        cpp 안의 배열(코드 테이블)로 시작하는 게 이번 달엔 훨씬 빠르고 디버깅도 쉽다.
-	void createRandomEnemy();
 
 	void updateGrid(Actor* actor);
 
@@ -136,18 +147,13 @@ private:
 	//  가산 지점은 이미 표시되어 있다 → Enemy::OnEnter()의 "// 점수 증가" 주석 자리.
 	//  배점: 소형 적 100 / 중형 1,000 / 보스 페이즈 10,000 (기획서 9장 표)
 	//  참고: 파일 저장은 지금 하지 마라. 실행 중에만 유지되면 1주차 목표로는 충분하다.
+	int32 _score = 0;
+	float _stageElapsedTime = 0.f;
+	int32 _nextWaveIndex = 0;
 
-	// 카메라 좌표 추가
-	// TODO(1주차 Day5): 좌표계를 화면 고정으로 단순화할 것
-	//  현재: '화면보다 큰 월드 + 플레이어를 따라가는 카메라' 구조다.
-	//        그런데 Player::move()는 GWinSizeX/Y(화면 크기)로 이동을 제한하고 있어서
-	//        월드 좌표와 화면 좌표가 뒤섞여 있다. 이대로 2주차 탄막에 들어가면
-	//        '탄이 화면 밖으로 나갔는지' 판정이 계속 헷갈린다.
-	//  목표: 종스크롤 STG 표준대로 화면은 고정, 배경만 스크롤.
-	//  할 일: 카메라 관련 코드를 지우지 말고, _cameraPos를 화면 중앙에 '고정'해라.
-	//        그러면 ConvertWorldToScreen()이 항등 함수가 되어 월드 좌표 = 화면 좌표가 된다.
-	//        (코드를 삭제하지 않으므로 되돌리기 쉽고, 그리드 코드도 그대로 동작한다)
-	Vector _cameraPos;
+	// 카메라 좌표: 화면 중앙에 고정 (종스크롤 STG는 화면 고정 + 배경 스크롤 구조)
+	// ConvertWorldToScreen()의 offset이 0이 되어 월드 좌표 = 화면 좌표가 된다.
+	Vector _cameraPos = {GWinSizeX/2, GWinSizeY/2};
 	Vector _mapSize;
 	class Player* _player = nullptr;
 };

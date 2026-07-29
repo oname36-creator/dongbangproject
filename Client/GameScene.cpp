@@ -12,6 +12,27 @@
 #include "ResourceData.h"
 #include "WorldBG.h"
 #include "GameScene.h"
+#include "InputManager.h"
+#include "ResultScene.h"
+#include "SceneManager.h"
+
+// Stage 1 웨이브 테이블. 시간 순으로 오름차순 정렬되어 있어야 한다
+// (GameScene::Update()의 Playing 케이스가 _nextWaveIndex를 순서대로만 훑기 때문).
+struct GameScene::WaveEntry
+{
+	float time;         // 스테이지 시작 후 몇 초에 등장하는지
+	wstring enemyKey;   // ResourceData의 텍스처 키
+	Vector pos;         // 첫 적이 등장할 위치
+	int32 count;        // 가로로 나열할 개수
+};
+
+static const GameScene::WaveEntry g_waveTable[] =
+{
+	{ 2.0f,  L"Enemy1", {50, 100}, 4 },
+	{ 6.0f,  L"Enemy2", {50, 100}, 4 },
+	{ 10.0f, L"Enemy3", {50, 100}, 4 },
+	{ 14.0f, L"Enemy4", {50, 100}, 4 },
+};
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
 // ObjectPool<T> (vector<T>) 값 자체를 가지고 있는 풀을 생성하는것도,
@@ -26,24 +47,20 @@ GameScene::~GameScene()
 
 void GameScene::Init()
 {
+	_cameraPos.x = (GWinSizeX / 2);
+	_cameraPos.y = (GWinSizeY / 2);
 	// Scene -> LobbyScene, GameScene, EditScene
 	// Scene에 필요한 리소스 로드
 	loadResources();
 
-	// 객체생성전에 미리 풀을 생성해둔다.
-	// 미리 100개를 만들어둔다. Bullet [100]
-	// TODO(1주차 Day5): 탄환 풀 크기를 크게 올릴 것 ★ 2주차 탄막의 전제조건
-	//  현재 100개는 직선탄만 쏘는 지금 기준이다.
-	//  2주차에 원형탄(1회 20발)·나선탄이 들어가면 몇 초 만에 고갈된다.
-	//  → 1000 이상으로 올려라. Bullet 하나는 작아서 메모리 부담이 거의 없다.
-	//  참고: ObjectPool::Init()은 vector를 resize해 객체를 '미리' 다 만들어 둔다.
-	//        런타임에 자동으로 늘어나지 않는다(ObjectPool.h의 Acquire() 주석 참고).
-	_bulletPool.Init(100);
-	_enemyPool.Init(100);
+	// 객체생성전에 미리 풀을 생성해둔다. (2주차 원형/나선탄 대비 1000개로 상향)
+	_bulletPool.Init(1000);
+	_enemyPool.Init(1000);
 
 	// Scene에 필요한 객체 생성
 	createObjects();
 
+	TimeManager::GetInstance().AddTimer([this](){ _state = GameSceneState::Playing; }, 2.0f, false);
 	// Grid 미리 생성
 	_gridCountX = (int32)_mapSize.x / _gridSize;
 	_gridCountY = (int32)_mapSize.y / _gridSize;
@@ -51,21 +68,6 @@ void GameScene::Init()
 	int32 totalGridCount =_gridCountX * _gridCountY;
 	_grid.resize(totalGridCount);
 
-
-	// ObjectPool 미리 생성
-	//for (int32 i = 0; i < 100; ++i)
-	//{
-	//	// 이 방식은, 운영체제가 알아서 메모리를 할당해주기때문에
-	//	// 연속메모리를 줄수도 있고, 아닐수도 있고.
-	//	// 캐시 히트율이 좋을수도 있고, 안좋을수도 있다.
-	//	_bulletList.push_back(new Bullet());	
-	//}
-
-	// vector 자체 순회는 캐시 히트가 좋지만,
-	//for (auto bullet : _bulletList)
-	//{
-	//	bullet->GetPos();	// 직접 Bullet 을 찾아가서 정보를 읽어야 한다면, 캐시 미스가 발생할 확률이 있다.
-	//}
 }
 
 void GameScene::Cleanup()
@@ -87,6 +89,36 @@ void GameScene::Update(float deltaTime)
 	for (auto actor : _actors)
 	{
 		actor->Update(deltaTime);
+	}
+
+	switch(_state)
+	{
+		case GameSceneState :: Ready : 
+			break;
+		case GameSceneState :: Playing : 
+		
+			_stageElapsedTime += deltaTime;
+			while (_nextWaveIndex < std::size(g_waveTable) && g_waveTable[_nextWaveIndex].time <= _stageElapsedTime)
+			{
+				SpawnWave(g_waveTable[_nextWaveIndex]);
+				_nextWaveIndex++;
+			}
+			if(_player == nullptr)
+			{
+				_state = GameSceneState :: GameOver; // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
+			}
+			break;
+		case GameSceneState :: Boss :
+			break;
+		case GameSceneState :: Clear : 
+			break;
+		case GameSceneState :: GameOver : 
+			if(InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
+			{
+				SceneManager::GetInstance().ChangeScene(new ResultScene(_score));
+			}
+			break;
+
 	}
 
 	// 삭제가 필요한 애들은 삭제
@@ -170,32 +202,7 @@ void GameScene::Update(float deltaTime)
 	}
 
 
-	// 플레이어의 위치와 카메라의 위치를 맞추고 싶다.
-	// TODO(1주차 Day5): 카메라를 화면 중앙에 고정할 것 (Scene.h의 _cameraPos 주석 참고)
-	//  아래는 카메라가 플레이어를 따라다니는 코드다. 종스크롤 STG에서는
-	//  화면을 고정하고 배경만 스크롤하는 편이 탄막 판정이 훨씬 단순해진다.
-	//  할 일: 이 블록을 지우지 말고, _cameraPos를 (GWinSizeX/2, GWinSizeY/2)로 고정해 본다.
-	//        그러면 ConvertWorldToScreen()의 offset이 0이 되어 월드 좌표 = 화면 좌표가 된다.
-	//  검증: 플레이어를 움직여도 배경이 따라 움직이지 않으면 성공.
-	if (_player)
-	{
-		_cameraPos = _player->GetPos();
-
-		// camera가 좌상단, 우하단 범위를 벗어나면 안되니깐, 좌표를 보정해준다.
-		float halfSizeX = GWinSizeX / 2;
-		float halfSizeY = GWinSizeY / 2;
-
-		// clamp 함수는 아래 4줄을 한줄로 해주는 함수
-		/*
-		if (_cameraPos.x < halfSizeX) // 최소
-			_cameraPos.x = halfSizeX;
-		else if(_cameraPos.x > _mapSize.x - halfSizeX) // 최대
-			_cameraPos.x = _mapSize.x - halfSizeX;
-		*/
-
-		_cameraPos.x = ::clamp(_cameraPos.x, halfSizeX, _mapSize.x - halfSizeX);
-		_cameraPos.y = ::clamp(_cameraPos.y, halfSizeY, _mapSize.y - halfSizeY);
-	}
+	// 카메라는 Init()에서 화면 중앙으로 고정해뒀다 (종스크롤 STG는 화면 고정 + 배경 스크롤).
 }
 
 void GameScene::Render(HDC hdc)
@@ -228,18 +235,14 @@ void GameScene::DeleteActor(Actor* actor)
 
 void GameScene::CreateBullet(Vector pos, BulletType type)
 {
-	// TODO(1주차 Day5): Acquire() 실패를 방어할 것 ★ 크래시 지점
-	//  ObjectPool::Acquire()는 풀이 고갈되면 nullptr을 반환한다(ObjectPool.h 참고).
-	//  그런데 아래에서 반환값을 검사하지 않고 바로 bullet->Init()을 호출한다 → 널 역참조 크래시.
-	//  할 일: nullptr이면 그냥 return 한다. (탄 한 발 안 나가는 게 크래시보다 낫다)
-	//  힌트: 바로 아래 createRandomEnemy()에는 이미 같은 방어 코드가 있다. 그걸 따라 하면 된다.
-	//  참고: Acquire()의 assert는 Debug 빌드에서만 걸린다. Release에서는 조용히 nullptr이 와서
-	//        더 찾기 어려운 크래시가 된다.
-
 	// TODO(2주차): 이 함수에 방향(dir)과 속도(speed) 인자를 추가해야 한다.
 	//  지금은 type만 받고 방향을 Bullet::Init() 안에서 고정하고 있어서
 	//  부채꼴/원형/나선 같은 패턴을 만들 수 없다. 2주차 첫 작업이 이 시그니처 확장이다.
 	Bullet* bullet = _bulletPool.Acquire(); // new Bullet();
+
+	if(bullet == nullptr)
+		return;
+
 	bullet->Init(type);
 	bullet->SetPos(pos);
 
@@ -307,22 +310,6 @@ void GameScene::loadResources()
 		}
 	}
 
-
-	/*
-	// 실제 텍스처 로드 요청
-	ResourceManager::GetInstance().LoadTexture(L"Player", L"Player.bmp", RGB(252, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"BG", L"BG.bmp", -1);
-	ResourceManager::GetInstance().LoadTexture(L"Enemy1", L"Enemy1.bmp", RGB(255, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"Enemy2", L"Enemy2.bmp", RGB(255, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"Enemy3", L"Enemy3.bmp", RGB(255, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"Enemy4", L"Enemy4.bmp", RGB(255, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"EnemyBullet", L"EnemyBullet.bmp", RGB(0, 0, 0), 1, 5);
-	ResourceManager::GetInstance().LoadTexture(L"Effect", L"explosion.bmp", RGB(0, 0, 0), 2, 6, 2.0f);
-	ResourceManager::GetInstance().LoadTexture(L"Item", L"GoldTresureClosed.bmp", RGB(255, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"PlayerBullet", L"PlayerBullet.bmp", RGB(252, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"UI_HP", L"PlayerHP.bmp", RGB(255, 0, 255));
-	ResourceManager::GetInstance().LoadTexture(L"Stage_2", L"Stage_2.bmp", -1);
-	*/
 }
 
 void GameScene::createObjects()
@@ -353,28 +340,9 @@ void GameScene::createObjects()
 
 	// 플레이어 객체를 캐싱해두자.
 	_player = player;
-	
-	// 랜덤하게 등장하는 적들
-	createRandomEnemy();
 
-	// 적들을 2초마다 주기적으로 스폰하는 타이머 설정
-	// TODO(1주차 Day6~7): 이 '무한 랜덤 스폰'을 Stage 1 웨이브 진행으로 교체할 것
-	//  현재는 게임이 끝날 때까지 2초마다 무작위 적이 계속 나온다 → 스테이지라는 개념이 없다.
-	//  목표(기획서 7장 Stage 1 구간표): 0:00~1:00 소형 편대, 1:00~2:30 포대기 ... 처럼
-	//        시간대별로 정해진 웨이브가 순서대로 나오고, 마지막에 보스로 이어진다.
-	//  할 일: Scene.h의 웨이브 테이블 TODO를 먼저 만든 뒤, 이 타이머를 그 테이블을
-	//        진행시키는 코드로 바꾼다.
-	//  함정: 이 AddTimer는 반복(loop=true)이라 씬이 바뀌어도 계속 살아 있다.
-	//        씬을 나갈 때 Remove()로 해제하지 않으면, ResultScene에서도 적이 스폰되거나
-	//        이미 사라진 Scene을 캡처한 람다가 돌아 크래시한다.
-	//        (AddTimer의 반환값 int32 id를 보관해 둬야 Remove할 수 있다 —
-	//         Enemy::Init()/Destroy()가 _shootTimerId로 하는 방식을 참고)
-	TimeManager::GetInstance().AddTimer([this]()
-		{
-			createRandomEnemy();
-		},
-		2.0f, // 2초마다
-		true); // 반복(true) 알람을 울려달라
+	// 적 스폰은 이제 웨이브 테이블(g_waveTable)이 GameScene::Update()의 Playing
+	// 케이스에서 스테이지 경과 시간을 보고 SpawnWave()를 호출하는 방식으로 진행된다.
 }
 
 // Scene에 등록되는 Actor들이 모두 해야할일
@@ -427,24 +395,20 @@ void GameScene::removeActor(Actor* actor)
 	}
 }
 
-void GameScene::createRandomEnemy()
+
+
+
+void GameScene::SpawnWave(const WaveEntry& wave)
 {
-	wstring textureKey[4] = { L"Enemy1", L"Enemy2", L"Enemy3", L"Enemy4" };
-	int randomIndex = rand() % 4;
+	int32 xDelta = GWinSizeX / wave.count;
 
-	const int32 enemyCount = 4;
-	Vector pos{ 50, 100 };
-	int32 xDelta = GWinSizeX / enemyCount;
-
-	for (int32 i = 0; i < enemyCount; ++i)
+	for(int32 i = 0; i < wave.count; ++i)
 	{
-		Enemy* enemy = _enemyPool.Acquire(); //new Enemy();
-		if (nullptr == enemy)
-			return;
+		Enemy* enemy = _enemyPool.Acquire();
+		if(nullptr == enemy)
+		return;
 
-		enemy->Init(Vector{ pos.x + (xDelta * i), pos.y }, textureKey[randomIndex]);
-
-		// 추가는 무조건 예약 리스트에 넣는다.
+		enemy->Init(Vector{wave.pos.x + (xDelta * i), wave.pos.y}, wave.enemyKey);
 		_reservedAdd.push_back(enemy);
 	}
 }

@@ -58,6 +58,9 @@
     <ClInclude Include="Engine\TimeManager.h">
       <Filter>Engine</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\SceneManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
     <ClInclude Include="Client\Airplane.h">
       <Filter>Client</Filter>
     </ClInclude>
@@ -92,6 +95,12 @@
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="Client\WorldBG.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\TitleScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\ResultScene.h">
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="Common\Util.h">
@@ -153,6 +162,9 @@
     <ClCompile Include="Engine\TimeManager.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\SceneManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
     <ClCompile Include="Client\Airplane.cpp">
       <Filter>Client</Filter>
     </ClCompile>
@@ -187,6 +199,12 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\WorldBG.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\TitleScene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\ResultScene.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Common\Util.cpp">

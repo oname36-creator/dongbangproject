@@ -11,7 +11,8 @@ public:
 	virtual void OnEnter(Actor* other) override;
 	virtual RenderLayer GetRenderLayer() override { return RenderLayer::Player; }
 	virtual ActorType GetActorType() override { return ActorType::Player; }
-	int32 GetHp() const { return _lives; }
+	int32 GetLives() const { return _lives; }
+	int32 GetBoom() const {return _boom;}
 	int32 GetMaxHp() const { return 100; }
 private:
 	void move(float x, float y);

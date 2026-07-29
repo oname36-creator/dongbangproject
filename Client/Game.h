@@ -24,7 +24,7 @@ public:
 	// TODO(2주차 이후, TitleScene/ResultScene을 실제로 붙일 때): Engine/에 SceneManager
 	//  싱글톤을 만들고 이 함수와 _gamescene 멤버를 그쪽으로 옮길 것. 지금은 씬이
 	//  GameScene 하나뿐이라 Game이 직접 들고 있어도 당장은 문제 없다.
-	class GameScene* GetScene() const { return _gamescene; }
+	class GameScene* GetScene() const;
 
 private:
 	// 아무나 생성못하게 생성자/소멸자를 숨기자
@@ -39,6 +39,5 @@ private:
 	HDC _hdcBack;	// 실시간으로 그려지는 버퍼
 	HBITMAP _bmpBack;	// back hdc가 사용하는 텍스처
 
-	class GameScene* _gamescene = nullptr;
 };
 

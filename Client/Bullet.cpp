@@ -65,13 +65,8 @@ void Bullet::Update(float deltaTime)
 	pos = pos + _dir * _moveSpeed * deltaTime;
 	SetPos(pos);
 
-	// TODO(1주차 Day5): 화면 밖 판정에 x축을 추가할 것 ★ 2주차 탄막의 전제조건
-	//  현재는 y축만 검사한다. 직선탄뿐인 지금은 문제가 없지만,
-	//  2주차에 부채꼴/원형 탄을 넣는 순간 좌우로 나간 탄이 '영원히 죽지 않고'
-	//  오브젝트 풀을 잠식한다 → 풀 고갈 → Acquire()가 nullptr 반환 → 크래시.
-	//  할 일: x < 0 || x > GWinSizeX 조건을 함께 검사한다.
-	//  힌트: 경계에 여유를 조금 두면(예: -32) 화면 끝에서 탄이 깜빡 사라지는 걸 막을 수 있다.
-	if (GetPos().y < 0 || GetPos().y > GWinSizeY)
+	// 여유값(32px)만큼 화면 밖으로 나간 뒤에 삭제 : 경계에서 탄이 깜빡 사라지는 것 방지
+	if (GetPos().y < -32 || GetPos().y > (GWinSizeY + 32) || GetPos().x < -32 || GetPos().x > (GWinSizeX + 32))
 	{
 		// 화면 밖으로 나가면 삭제 예약
 		Destroy();

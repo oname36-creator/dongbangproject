@@ -24,8 +24,7 @@ void UIManager::Update(float deltaTime)
 //  주의: Player에서 GetHp()가 사라지면 이 파일이 제일 먼저 컴파일 에러를 낸다.
 void UIManager::Render(HDC hdc)
 {
-	if (_hpTexture == nullptr)
-		return;
+	
 
 	GameScene* scene = Game::GetInstance().GetScene();
 	if (scene == nullptr)
@@ -35,25 +34,13 @@ void UIManager::Render(HDC hdc)
 	if (player == nullptr)
 		return;
 
-	int32 hp = player->GetHp();
-	if (hp < 0)
-		hp = 0;
-
-	// 1 heart = 10 HP. Max HP = 100 -> Max Hearts = 10.
-	int32 heartCount = hp / 10;
-
-	Vector startPos(100.f, 100.f);
-	float spacing = 5.f;
+	int32 lives = player->GetLives();
+	if (lives < 0)
+		lives = 0;
 	
-	// Disable center alignment to draw based on top-left (100, 100)
-	_hpTexture->SetApplyCenter(false);
+	wstring lifeStr = std::format(L"life: {0} Bomb: {1}", lives, player->GetBoom());
+	::TextOut(hdc, 10, 40, lifeStr.c_str(), static_cast<int32>(lifeStr.size()));
 
-	float heartWidth = (float)_hpTexture->GetFrameSize().cx;
-
-	for (int32 i = 0; i < heartCount; ++i)
-	{
-		Vector drawPos = startPos;
-		drawPos.x += i * (heartWidth + spacing);
-		_hpTexture->RenderScreen(hdc, drawPos);
-	}
+	wstring scoreStr = std::format(L"Score : {0}", scene->GetScore());
+	::TextOut(hdc, GWinSizeX -150, 40, scoreStr.c_str(), static_cast<int32>(scoreStr.size()));
 }
