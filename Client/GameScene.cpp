@@ -233,20 +233,32 @@ void GameScene::DeleteActor(Actor* actor)
 	_reservedRemove.insert(actor);
 }
 
-void GameScene::CreateBullet(Vector pos, BulletType type)
+
+void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed)
 {
-	// TODO(2주차): 이 함수에 방향(dir)과 속도(speed) 인자를 추가해야 한다.
-	//  지금은 type만 받고 방향을 Bullet::Init() 안에서 고정하고 있어서
-	//  부채꼴/원형/나선 같은 패턴을 만들 수 없다. 2주차 첫 작업이 이 시그니처 확장이다.
+	
 	Bullet* bullet = _bulletPool.Acquire(); // new Bullet();
+
 
 	if(bullet == nullptr)
 		return;
 
-	bullet->Init(type);
+	bullet->Init(type, dir, speed);
 	bullet->SetPos(pos);
 
 	_reservedAdd.push_back(bullet);
+}
+
+void GameScene::FireStraight(Vector pos, BulletType type, Vector dir, float speed)
+{
+	CreateBullet(pos, type, dir, speed);
+}
+
+void GameScene::FireAimed(Vector pos, BulletType type,Vector targetPos, float speed)
+{
+	Vector dir = targetPos - pos;
+	dir.Normalize();
+	CreateBullet(pos, type, dir, speed);
 }
 
 void GameScene::CreateEffect(Vector pos)

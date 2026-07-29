@@ -70,7 +70,9 @@ public:
 	// 씬에서 관리되는 Actor중에 하나 삭제해달라고 요청
 	void DeleteActor(class Actor* actor);
 
-	void CreateBullet(Vector pos, BulletType type);
+	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f);
+	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f);
+	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
 

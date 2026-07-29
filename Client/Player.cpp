@@ -91,7 +91,7 @@ void Player::Update(float deltaTime)
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
 	{
 
-		Game::GetInstance().GetScene()->CreateBullet(GetPos(), BulletType::Player);
+		Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Player, Vector(0,-1));
 		_fireCooldown = _fireInterval; 
 	}
 

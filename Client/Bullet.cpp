@@ -5,7 +5,7 @@
 #include "ColliderCircle.h"
 #include "ImageRenderer.h"
 
-void Bullet::Init(BulletType type)
+void Bullet::Init(BulletType type, Vector dir, float speed)
 {
 	_type = type;
 
@@ -17,13 +17,15 @@ void Bullet::Init(BulletType type)
 		textureKey = L"EnemyBullet";
 		// 적의 총알일 경우, sprite 5개 쪼개져있는것중에 한개 설정
 		textureIndex = rand() % 5;
-		_dir = Vector(0, 1); 
+		_dir = dir;
+		_moveSpeed = speed;
 	}
 	else
 	{
 		// 플레이어의 총알
 		textureKey = L"PlayerBullet";
-		_dir = Vector(0, -1);
+		_dir = dir;
+		_moveSpeed = speed;
 	}
 
 	//_texture = ResourceManager::GetInstance().GetTexture(textureKey);

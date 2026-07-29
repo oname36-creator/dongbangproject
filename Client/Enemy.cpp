@@ -88,5 +88,5 @@ void Enemy::OnEnter(Actor* other) // other : Player
 
 void Enemy::shootBullet()
 {
-	Game::GetInstance().GetScene()->CreateBullet(GetPos(), BulletType::Enemy);
+	Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Enemy, Vector(0, 1));
 }
