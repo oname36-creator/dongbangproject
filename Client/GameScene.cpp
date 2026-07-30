@@ -2,6 +2,7 @@
 #include "Scene.h"
 #include "Player.h"
 #include "Enemy.h"
+#include "Boss.h"
 #include "Background.h"
 #include "ResourceManager.h"
 #include "TimeManager.h"
@@ -15,6 +16,11 @@
 #include "InputManager.h"
 #include "ResultScene.h"
 #include "SceneManager.h"
+#include <random>
+
+using namespace std;
+random_device rd;
+mt19937 gen(rd());
 
 // Stage 1 웨이브 테이블. 시간 순으로 오름차순 정렬되어 있어야 한다
 // (GameScene::Update()의 Playing 케이스가 _nextWaveIndex를 순서대로만 훑기 때문).
@@ -107,8 +113,22 @@ void GameScene::Update(float deltaTime)
 			{
 				_state = GameSceneState :: GameOver; // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
 			}
+			if (_nextWaveIndex >= (int32)std::size(g_waveTable))
+			{
+				// 모든 웨이브를 소진했으니 보스 스테이지로 전환
+				_state = GameSceneState :: Boss;
+			}
 			break;
 		case GameSceneState :: Boss :
+			// Boss 상태에 처음 들어온 프레임에만 스폰 (한 번만 생성)
+			if (_boss == nullptr)
+			{
+				Boss* boss = new Boss();
+				// TODO: "Boss" 텍스처 키는 ResourceData.json에 아직 없다. 실제 에셋 준비 시 등록할 것.
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss");
+				_reservedAdd.push_back(boss);
+				_boss = boss;
+			}
 			break;
 		case GameSceneState :: Clear : 
 			break;
@@ -261,6 +281,51 @@ void GameScene::FireAimed(Vector pos, BulletType type,Vector targetPos, float sp
 	CreateBullet(pos, type, dir, speed);
 }
 
+void GameScene::FireCircle(Vector pos, BulletType type, int32 count, float speed)
+{
+	
+	for(int32 i = 0; i < count; ++i)
+	{
+		float radian = DegreeToRadian(i*(360.f/count));
+		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
+	}
+}
+
+void GameScene::FireSpiral(Vector pos, BulletType type, int32 count, float speed, float& rotationAngle, float rotationSpeed)
+{
+	for(int32 i = 0; i < count; ++i)
+		{
+			float radian = DegreeToRadian(rotationAngle + (i*(360.f/count)));
+			CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
+		}
+
+	rotationAngle += rotationSpeed; // 다음 호출 때 이어질 수 있도록 각도 누적
+}
+
+void GameScene::FireFan(Vector pos, BulletType type, Vector dir, float anglespread, int32 count, float speed)
+{
+	float baseAngle = atan2f(dir.y, dir.x); // dir 방향의 각도 (라디안)
+
+	for(int32 i = 0; i < count; ++i)
+	{
+		float offsetDeg = i * (anglespread / count) - anglespread / 2.f; // 중심 기준 좌우 대칭 오프셋
+		float radian = baseAngle + DegreeToRadian(offsetDeg);
+		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
+	}
+}
+
+void GameScene::FireRandom(Vector pos, BulletType type, int32 count, float speed)
+{
+	uniform_real_distribution<float> randir(0, 360);
+	for(int32 i = 0; i < count; ++i)
+	{
+		float random_dir = randir(gen);
+		float radian = DegreeToRadian(random_dir);
+		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
+	}
+}
+
+
 void GameScene::CreateEffect(Vector pos)
 {
 	Effect* effect = new Effect();
@@ -387,6 +452,11 @@ void GameScene::removeActor(Actor* actor)
 	if (actor == _player)
 	{
 		_player = nullptr;
+	}
+
+	if (actor == _boss)
+	{
+		_boss = nullptr;
 	}
 
 	if (actor->GetRenderLayer() >= RenderLayer::Count)

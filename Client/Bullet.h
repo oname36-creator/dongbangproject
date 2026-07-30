@@ -5,7 +5,7 @@ class Bullet : public Actor // (Actor=GameObject)
 {
 	using Super = Actor;
 public:
-	void Init(BulletType type, Vector dir, float speed = 500.f);
+	void Init(BulletType type, Vector dir, float speed);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 

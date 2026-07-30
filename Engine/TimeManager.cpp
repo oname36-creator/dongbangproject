@@ -44,7 +44,11 @@ void TimeManager::Update()
 	// set에 추가된 Id의 타이머를 모두 제거한다.
 	_timers.erase(std::remove_if(_timers.begin(), _timers.end(),
 		[&](const Timer& timer) {
-			return _removeTimers.find(timer.GetId()) != _removeTimers.end();
+			// 명시적으로 Remove() 요청된 타이머 + 1회성(loop=false)이라 이미 발동을 마친 타이머는 제거한다.
+			// (1회성 타이머는 발동 후에도 스스로 목록에서 안 빠지면 _sumTime이 계속 _interval을 넘긴 상태로
+			//  남아서 매 프레임 _func()가 재호출되는 버그가 생긴다.)
+			return _removeTimers.find(timer.GetId()) != _removeTimers.end() ||
+				(!timer.IsLoop() && timer.IsExpired());
 		}), _timers.end());
 	_removeTimers.clear();
 
@@ -92,7 +96,7 @@ void Timer::Update(float deltaTime)
 	}
 }
 
-bool Timer::IsExpired()
+bool Timer::IsExpired() const
 {
 	// 타이머의 누적시간이 알람 울려야하는 시간보다 넘어섯다면 만료된것
 	return (_sumTime >= _interval);

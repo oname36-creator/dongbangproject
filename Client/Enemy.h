@@ -2,6 +2,14 @@
 
 #include "Airplane.h"
 
+enum class EnemyType
+{
+	Zigzag,
+	Fan,
+	Circle,
+	Aimed
+};
+
 class Enemy : public Airplane
 {
 	using Super = Airplane;
@@ -20,6 +28,9 @@ private:
 	void shootBullet();
 
 private:
+	int32 _hp = 2;
+	EnemyType _type;
+
 	float _moveSpeedX = 50;
 	float _moveSpeedY = 50;
 

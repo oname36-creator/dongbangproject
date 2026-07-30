@@ -16,7 +16,9 @@ enum class RenderLayer
 	Enemy,
 	Bullet,
 	Player,
+	Boss,
 	Effect,     // 제일 위
+
 	
 	// 최대 개수
 	Count
@@ -31,6 +33,7 @@ enum class ActorType
 	PlayerBullet,
 	EnemyBullet,
 	Player,
+	Boss,
 	Effect,
 	Count,	// 최대 개수
 };

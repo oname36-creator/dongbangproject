@@ -3,6 +3,7 @@
 #include "Bullet.h"
 #include "Game.h"
 #include "GameScene.h"
+#include "Player.h"
 #include "TimeManager.h"
 #include "colliderCircle.h"
 
@@ -15,7 +16,37 @@ void Enemy::Init(Vector pos, wstring key)
 	_shootTimerId = TimeManager::GetInstance().AddTimer([this]() 
 		{
 			shootBullet();
-		}, 1.0f, true);
+		}, 2.0f, true);
+	EnemyType type = EnemyType::Aimed;
+if (key == L"Enemy1")
+	{
+	type = EnemyType::Zigzag;
+	_hp = 2;
+	}
+else if (key == L"Enemy2")
+	{
+	type = EnemyType::Fan;
+	_hp = 2;
+	}
+
+else if (key == L"Enemy3")
+	{
+    type = EnemyType::Circle;
+	_hp = 2;
+	}
+else if (key == L"Enemy4")
+	{
+    type = EnemyType::Aimed;
+	_hp = 2;
+	}
+else
+	{
+	// 알 수 없는 key: 웨이브 테이블 오타 등. 조용히 넘어가지 않도록 알린다.
+	assert(false && "Enemy::Init - unknown enemy key");
+	}
+_type = type;
+
+
 	
 }
 
@@ -73,20 +104,43 @@ void Enemy::OnEnter(Actor* other) // other : Player
 		if (bullet && bullet->GetBulletType() == BulletType::Player)
 		{
 			// 플레이어의 총알이다.
+			_hp -= 1;
 
-			// 적 비행기 스스로 삭제하고
+			if(_hp <= 0)
+			{
 			Destroy();
-			
-			// 파티클 재생
 			Game::GetInstance().GetScene()->CreateEffect(GetPos());
-
 			// 점수 증가
 			Game::GetInstance().GetScene()->AddScore(100);
+			}
+			// 파티클 재생
+		
 		}
 	}
 }
 
 void Enemy::shootBullet()
 {
-	Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Enemy, Vector(0, 1));
+	switch(_type)
+	{
+		case EnemyType::Circle : 
+			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy, 4, 300.f);
+			break;
+		case EnemyType::Fan : 
+			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f, 4, 300.f);
+			break;
+		case EnemyType::Aimed :
+		{
+			Player* player = Game::GetInstance().GetScene()->GetPlayer();
+			if (player != nullptr)
+			{
+				Game::GetInstance().GetScene()->FireAimed(GetPos(), BulletType::Enemy, player->GetPos(), 300.f);
+			}
+		
+			break;
+		}
+		case EnemyType::Zigzag :
+			Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Enemy, Vector(0, 1));
+			break;
+	}
 }

@@ -61,22 +61,22 @@ void Player::Update(float deltaTime)
 		_boom -= 1;
 		Game::GetInstance().GetScene()->ClearEnemyBullets();
 	}
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::W))
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Up))
 	{
 		move(0, -_speed * deltaTime);
 	}
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::S))
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Down))
 	{
 		move(0, _speed * deltaTime);
 	}
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::A))
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Left))
 	{
 		move(-_speed * deltaTime, 0);
 	}
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::D))
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Right))
 	{
 		move(_speed * deltaTime, 0);
 	}

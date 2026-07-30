@@ -9,6 +9,7 @@
 // C++17
 class Enemy;
 class Bullet;
+class Boss;
 
 // 게임화면에 등장하는 모든 오브젝트를 관리
 //
@@ -73,6 +74,11 @@ public:
 	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f);
 	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f);
 	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
+	void FireFan(Vector pos,BulletType type,Vector dir,float angleSpread,int32 count,float speed);
+	void FireCircle(Vector pos, BulletType type, int32 count, float speed);
+	void FireSpiral(Vector pos,BulletType type,int32 count,float speed,float& rotationAngle, float rotationSpeed);
+	void FireRandom(Vector pos, BulletType type, int32 count, float speed);
+
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
 
@@ -158,6 +164,7 @@ private:
 	Vector _cameraPos = {GWinSizeX/2, GWinSizeY/2};
 	Vector _mapSize;
 	class Player* _player = nullptr;
+	class Boss* _boss = nullptr;
 };
 
 

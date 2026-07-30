@@ -73,6 +73,9 @@
     <ClInclude Include="Client\Effect.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="Client\Boss.h">
+      <Filter>Client</Filter>
+    </ClInclude>
     <ClInclude Include="Client\Enemy.h">
       <Filter>Client</Filter>
     </ClInclude>
@@ -175,6 +178,9 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\Effect.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Boss.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp">
