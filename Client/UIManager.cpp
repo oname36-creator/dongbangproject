@@ -5,6 +5,7 @@
 #include "Game.h"
 #include "GameScene.h"
 #include "Player.h"
+#include "Boss.h"
 
 void UIManager::Init()
 {
@@ -43,4 +44,35 @@ void UIManager::Render(HDC hdc)
 
 	wstring scoreStr = std::format(L"Score : {0}", scene->GetScore());
 	::TextOut(hdc, GWinSizeX -150, 40, scoreStr.c_str(), static_cast<int32>(scoreStr.size()));
+
+	// TODO(2주차 Day5): 보스 체력바 + 이름/패턴명 표시
+	Boss* boss = scene->GetBoss();
+if (boss != nullptr)
+{
+    int32 barX = 50, barY = 20, barWidth = GWinSizeX - 100, barHeight = 15;
+
+    // 배경 바 (회색)
+    RECT bgRect = { barX, barY, barX + barWidth, barY + barHeight };
+    HBRUSH grayBrush = CreateSolidBrush(RGB(80, 80, 80));
+    FillRect(hdc, &bgRect, grayBrush);
+    DeleteObject(grayBrush);
+
+    // 현재 hp 비율만큼 채운 바 (빨강)
+    float ratio = (float)boss->GetHp() / (float)boss->GetMaxHp();
+    RECT hpRect = { barX, barY, barX + (int32)(barWidth * ratio), barY + barHeight };
+    HBRUSH redBrush = CreateSolidBrush(RGB(200, 30, 30));
+    FillRect(hdc, &hpRect, redBrush);
+    DeleteObject(redBrush);
+
+    wstring phaseStr = std::format(L"Phase {0}/{1}", boss->GetCurPhaseIndex() + 1, boss->GetPhaseCount());
+    ::TextOut(hdc, barX, barY - 20, phaseStr.c_str(), (int32)phaseStr.size());
+}
+
+	//  1. GameScene에 GetBoss() 같은 getter가 필요하다 (GetPlayer()와 동일한 패턴).
+	//  2. Boss에도 GetHp()/GetMaxHp() 같은 getter가 필요하다 (지금 _hp는 private, GameScene도 못 읽는다).
+	//  3. scene->GetBoss()가 nullptr이 아닐 때만 그려라(보스 페이즈가 아니면 아무것도 안 그림).
+	//  4. 이미지 새로 만들지 말고 Rectangle(hdc, ...) 두 겹으로 시작해라:
+	//     배경 바(회색) 위에 현재 hp 비율만큼 채운 바(빨강) - 기존 HUD 원칙(TextOut)과 같다.
+	//  5. 페이즈 이름도 같이 찍고 싶으면 Boss에 현재 페이즈 인덱스를 읽는 getter를 추가해서
+	//     "Phase 1/3" 처럼 TextOut으로 찍으면 충분하다.
 }

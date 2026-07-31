@@ -92,6 +92,7 @@ public:
 	const GridInfo& GetGridInfo(const Cell& cell);
 	int32 GetGridSize() const { return _gridSize; }
 	class Player* GetPlayer() const { return _player; }
+	class Boss* GetBoss() const { return _boss; }
 
 	int32 GetScore() const { return _score;}
 	void AddScore(int32 amount) {_score += amount;}
@@ -165,6 +166,7 @@ private:
 	Vector _mapSize;
 	class Player* _player = nullptr;
 	class Boss* _boss = nullptr;
+	bool _bossSpawned = false;
 };
 
 

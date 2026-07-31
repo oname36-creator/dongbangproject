@@ -13,7 +13,7 @@ void Boss::Init(Vector pos, wstring key)
 	loadTexture(key);
 _shootTimerId = TimeManager::GetInstance().AddTimer([this]() {shootBullet();}, 1.0f, true);
 	_hp = 100;
-	_phases = {{BossPatternType::Fan, 50},{BossPatternType::Circle, 0}};
+	_phases = {{BossPatternType::Fan, 50},{BossPatternType::Circle, 20},{BossPatternType::Spiral,0}};
 	_moveTargetPos = Vector(GWinSizeX*0.5f, 150.f);
 
 	_moveTimerId = TimeManager::GetInstance().AddTimer([this]() 
@@ -29,6 +29,7 @@ void Boss::Destroy()
 	Super::Destroy();
 	TimeManager::GetInstance().Remove(_shootTimerId);
 	TimeManager::GetInstance().Remove(_moveTimerId);
+	TimeManager::GetInstance().Remove(_spiralShootTimerId);
 }
 
 void Boss::Update(float deltaTime)
@@ -82,6 +83,11 @@ void Boss::transitionToNextPhase()
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());
 
 	_curPhaseIndex++;
+
+	if(_phases[_curPhaseIndex].pattern == BossPatternType::Spiral)
+	{
+		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet();}, 0.1f, true);
+	}
 }
 
 void Boss::shootBullet()
@@ -94,6 +100,10 @@ void Boss::shootBullet()
 		case BossPatternType::Circle : 
 			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy, 12, 300.f);
 			break;
-		
 	}
+}
+
+void Boss::shootSpiralBullet()
+{
+Game::GetInstance().GetScene()->FireSpiral(GetPos(), BulletType::Enemy, 2, 300.f, _spiralAngle, 10.f );
 }

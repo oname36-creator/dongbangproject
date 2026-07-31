@@ -113,7 +113,7 @@ void GameScene::Update(float deltaTime)
 			{
 				_state = GameSceneState :: GameOver; // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
 			}
-			if (_nextWaveIndex >= (int32)std::size(g_waveTable))
+			else if (_nextWaveIndex >= (int32)std::size(g_waveTable))
 			{
 				// 모든 웨이브를 소진했으니 보스 스테이지로 전환
 				_state = GameSceneState :: Boss;
@@ -121,14 +121,19 @@ void GameScene::Update(float deltaTime)
 			break;
 		case GameSceneState :: Boss :
 			// Boss 상태에 처음 들어온 프레임에만 스폰 (한 번만 생성)
-			if (_boss == nullptr)
+			if (!_bossSpawned)
 			{
-				Boss* boss = new Boss();
-				// TODO: "Boss" 텍스처 키는 ResourceData.json에 아직 없다. 실제 에셋 준비 시 등록할 것.
-				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss");
-				_reservedAdd.push_back(boss);
-				_boss = boss;
+					Boss* boss = new Boss();
+					boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss");
+					_reservedAdd.push_back(boss);
+					_boss = boss;
+					_bossSpawned = true;
 			}
+			else if(_boss == nullptr)
+			{
+				_state = GameSceneState::Clear;
+			}
+			
 			break;
 		case GameSceneState :: Clear : 
 			break;

@@ -25,6 +25,7 @@ public:
 	//  싱글톤을 만들고 이 함수와 _gamescene 멤버를 그쪽으로 옮길 것. 지금은 씬이
 	//  GameScene 하나뿐이라 Game이 직접 들고 있어도 당장은 문제 없다.
 	class GameScene* GetScene() const;
+	
 
 private:
 	// 아무나 생성못하게 생성자/소멸자를 숨기자
