@@ -5,7 +5,8 @@ class Background : public Actor
 {
 	using Super = Actor;
 public:
-	void Init();
+	void Init(std::wstring textureKey, float moveSpeed);
+	void ChangeTexture(std::wstring textureKey);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 	virtual RenderLayer GetRenderLayer() override { return RenderLayer::Background; }

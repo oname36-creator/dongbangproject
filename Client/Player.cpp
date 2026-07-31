@@ -6,6 +6,7 @@
 #include "Enemy.h"
 #include "Bullet.h"
 #include "ColliderCircle.h"
+#include "ResourceManager.h"
 
 void Player::Init()
 {
@@ -92,7 +93,10 @@ void Player::Update(float deltaTime)
 	{
 
 		Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Player, Vector(0,-1));
-		_fireCooldown = _fireInterval; 
+		_fireCooldown = _fireInterval;
+
+		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
+		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
 	}
 
 	// TODO(1주차 Day3~4): 폭탄 구현 (기획서 5장)
@@ -171,6 +175,9 @@ void Player::takeDamage()
 
 	_lives -= 1;
 	_invincibleTime = 1.5f;
+
+	fs::path hitPath = ResourceManager::GetInstance().GetResourcePath() / L"Hit.wav";
+	::PlaySound(hitPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
 
 	// 터지는 이펙트 추가
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());

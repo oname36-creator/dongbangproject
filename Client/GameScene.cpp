@@ -40,6 +40,16 @@ static const GameScene::WaveEntry g_waveTable[] =
 	{ 14.0f, L"Enemy4", {50, 100}, 4 },
 };
 
+// Stage 2 웨이브 테이블. Stage2 상태 진입 시 _stageElapsedTime을 0으로 리셋하므로
+// time 값은 g_waveTable과 마찬가지로 "Stage2 시작 후 경과 시간" 기준이다.
+static const GameScene::WaveEntry g_stage2WaveTable[] =
+{
+	{ 2.0f,  L"Enemy2", {50, 100}, 4 },
+	{ 5.0f,  L"Enemy1", {50, 100}, 4 },
+	{ 8.0f,  L"Enemy4", {50, 100}, 4 },
+	{ 11.0f, L"Enemy3", {50, 100}, 4 },
+};
+
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
 // ObjectPool<T> (vector<T>) 값 자체를 가지고 있는 풀을 생성하는것도,
 // cpp에서 인스턴스화할때 생성됨.
@@ -131,9 +141,31 @@ void GameScene::Update(float deltaTime)
 			}
 			else if(_boss == nullptr)
 			{
-				_state = GameSceneState::Clear;
+				// Stage1의 _stageElapsedTime을 그대로 물려받으면 g_stage2WaveTable의
+				// time 값과 어긋나므로 Stage2 시작 시점 기준으로 리셋한다.
+				_stageElapsedTime = 0.f;
+				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
+				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
+				_state = GameSceneState::Stage2;
 			}
-			
+
+			break;
+		case GameSceneState :: Stage2 :
+			_stageElapsedTime += deltaTime;
+			while (_nextStage2WaveIndex < std::size(g_stage2WaveTable) && g_stage2WaveTable[_nextStage2WaveIndex].time <= _stageElapsedTime)
+			{
+				SpawnWave(g_stage2WaveTable[_nextStage2WaveIndex]);
+				_nextStage2WaveIndex++;
+			}
+			if(_player == nullptr)
+			{
+				_state = GameSceneState :: GameOver; // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
+			}
+			else if (_nextStage2WaveIndex >= (int32)std::size(g_stage2WaveTable))
+			{
+				// 모든 웨이브를 소진했으니 Clear로 전환
+				_state = GameSceneState :: Clear;
+			}
 			break;
 		case GameSceneState :: Clear : 
 			break;
@@ -397,11 +429,19 @@ void GameScene::loadResources()
 void GameScene::createObjects()
 {
 	// 윈도우 크기와 1:1맞는 고정 배경
-	if(false)
+	if(true)
 	{
 		Background* bg = new Background();
-		bg->Init();
+		bg->Init(L"World_BG",200.0f);
 		_reservedAdd.push_back(bg);
+		_bgLayer1 = bg;
+	}
+	if(true)
+	{
+		Background* bg = new Background();
+		bg->Init(L"World_BG",50.0f);
+		_reservedAdd.push_back(bg);
+		_bgLayer2 = bg;
 	}
 
 	// 윈도우 크기보다 훨씬큰 배경
@@ -410,8 +450,7 @@ void GameScene::createObjects()
 		WorldBG* bg = new WorldBG();
 		bg->Init();
 
-		_mapSize = bg->GetMapSize();
-		_reservedAdd.push_back(bg);
+		_mapSize = Vector(GWinSizeX, GWinSizeY);
 	}
 
 	// 플레이어

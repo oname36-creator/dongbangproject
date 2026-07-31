@@ -4,13 +4,13 @@
 #include "Texture.h"
 #include "ImageRenderer.h"
 
-void Background::Init()
+void Background::Init(std::wstring texturKey, float moveSpeed)
 {
 	//_renderer = new ImageRenderer();
 	ImageRenderer* renderer = AddComponent<ImageRenderer>();
-	renderer->Init(L"BG");
+	renderer->Init(texturKey);
 	renderer->SetApplyCenter(false);
-
+	_moveSpeed = moveSpeed;
 	// 미리 캐싱해둔다.
 	_renderer = renderer;
 
@@ -20,6 +20,22 @@ void Background::Init()
 	// 텍스쳐의 크기를 가져와서 1,2번의 순환할 길이를 계산한다.
 	_textureHeight = renderer->GetSizeY();
 	_pos2 = Vector( 0, -(float)_textureHeight);
+
+}
+
+void Background::ChangeTexture(std::wstring textureKey)
+{
+	if (_renderer == nullptr)
+		return;
+
+	// 텍스처만 갈아끼우고, 순환 스크롤 위치는 처음부터 다시 계산한다.
+	_renderer->Init(textureKey);
+	// Init()이 내부적으로 fetch하는 Texture 객체는 _applyCenter가 각자 true로 초기화되어 있어서
+	// (Background는 좌상단 기준으로 그려야 하므로) 여기서 다시 꺼줘야 한다.
+	_renderer->SetApplyCenter(false);
+	_textureHeight = _renderer->GetSizeY();
+	SetPos(Vector(0, 0));
+	_pos2 = Vector(0, -(float)_textureHeight);
 }
 
 void Background::Update(float deltaTime)

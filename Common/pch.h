@@ -22,6 +22,10 @@ namespace fs = std::filesystem;
 // transparent Blt
 #pragma comment(lib, "msimg32.lib")
 
+// PlaySound
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+
 // Json
 #include <fstream>
 #include "Json/nlohmann/json.hpp" // nlohmann/json 헤더 파일

@@ -58,6 +58,7 @@ public:
 		Ready,
 		Playing,
 		Boss,
+		Stage2,
 		Clear,
 		GameOver
 	};
@@ -159,6 +160,7 @@ private:
 	int32 _score = 0;
 	float _stageElapsedTime = 0.f;
 	int32 _nextWaveIndex = 0;
+	int32 _nextStage2WaveIndex = 0;
 
 	// 카메라 좌표: 화면 중앙에 고정 (종스크롤 STG는 화면 고정 + 배경 스크롤 구조)
 	// ConvertWorldToScreen()의 offset이 0이 되어 월드 좌표 = 화면 좌표가 된다.
@@ -167,6 +169,10 @@ private:
 	class Player* _player = nullptr;
 	class Boss* _boss = nullptr;
 	bool _bossSpawned = false;
+
+	// Stage2 진입 시 텍스처를 교체하기 위해 패럴랙스 배경 두 장을 캐싱해둔다.
+	class Background* _bgLayer1 = nullptr;
+	class Background* _bgLayer2 = nullptr;
 };
 
 

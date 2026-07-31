@@ -6,6 +6,7 @@
 #include "Player.h"
 #include "TimeManager.h"
 #include "colliderCircle.h"
+#include "ResourceManager.h"
 
 void Enemy::Init(Vector pos, wstring key)
 {
@@ -110,6 +111,10 @@ void Enemy::OnEnter(Actor* other) // other : Player
 			{
 			Destroy();
 			Game::GetInstance().GetScene()->CreateEffect(GetPos());
+
+			fs::path explosionPath = ResourceManager::GetInstance().GetResourcePath() / L"Explosion.wav";
+			::PlaySound(explosionPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+
 			// 점수 증가
 			Game::GetInstance().GetScene()->AddScore(100);
 			}
