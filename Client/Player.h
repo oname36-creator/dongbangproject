@@ -29,6 +29,12 @@ private:
 	float _fireCooldown = 0.f;
 	float _fireInterval =0.1f;
 
+	// 보조 공격(유도탄): 가장 가까운 적을 자동으로 쫓아간다
+	float _subFireCooldown = 0.f;
+	float _subFireInterval = 0.5f;
+
+	bool _debugInvincible = false;
+	
 	// TODO(1주차 Day3~4): HP 체계를 '잔기/폭탄' 체계로 교체할 것
 	//  현재: _hp = 100, 피격당 -10 → 10대를 맞아야 죽는다. 탄막 슈팅의 규칙이 아니다.
 	//  목표(기획서 5장): 피격 1회 = 잔기 1 감소 / 초기 잔기 3 / 초기 폭탄 2 / 피격 후 무적 1.5~2초

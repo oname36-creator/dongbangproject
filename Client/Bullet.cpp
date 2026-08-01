@@ -4,10 +4,15 @@
 #include "ResourceManager.h"
 #include "ColliderCircle.h"
 #include "ImageRenderer.h"
+#include "Game.h"
+#include "GameScene.h"
+#include "Player.h"
 
-void Bullet::Init(BulletType type, Vector dir, float speed)
+void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed)
 {
 	_type = type;
+	_isHoming = isHoming;
+	_turnSpeed = turnSpeed;
 
 	wstring textureKey;
 	int32 textureIndex = -1;
@@ -62,6 +67,35 @@ void Bullet::Update(float deltaTime)
 {
 	// Component Update 호출을 위해
 	Super::Update(deltaTime);
+
+	if (_isHoming)
+	{
+		// 적 탄은 플레이어를 쫓고, 플레이어 탄(보조 공격)은 가장 가까운 적/보스를 쫓는다.
+		Actor* target = (_type == BulletType::Enemy)
+			? static_cast<Actor*>(Game::GetInstance().GetScene()->GetPlayer())
+			: Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
+
+		if (target != nullptr)
+		{
+			Vector toTarget = target->GetPos() - GetPos();
+			toTarget.Normalize();
+
+			float currentAngle = RadianToDegree(atan2f(_dir.y, _dir.x));
+			float targetAngle = RadianToDegree(atan2f(toTarget.y, toTarget.x));
+
+			// -180~180 범위로 정규화해서 최단 방향으로만 꺾이게 한다.
+			float diff = targetAngle - currentAngle;
+			while (diff > 180.f) diff -= 360.f;
+			while (diff < -180.f) diff += 360.f;
+
+			float maxTurn = _turnSpeed * deltaTime;
+			if (diff > maxTurn) diff = maxTurn;
+			else if (diff < -maxTurn) diff = -maxTurn;
+
+			float newAngle = DegreeToRadian(currentAngle + diff);
+			_dir = Vector(cosf(newAngle), sinf(newAngle));
+		}
+	}
 
 	Vector pos = GetPos();
 	pos = pos + _dir * _moveSpeed * deltaTime;

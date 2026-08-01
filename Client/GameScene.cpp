@@ -50,6 +50,34 @@ static const GameScene::WaveEntry g_stage2WaveTable[] =
 	{ 11.0f, L"Enemy3", {50, 100}, 4 },
 };
 
+// Stage 3 웨이브 테이블. 기획서 3장 "기존 패턴의 종합 회피" 취지대로
+// 4종 패턴(Zigzag/Fan/Circle/Aimed = Enemy1~4)을 한 바퀴 더 촘촘하게 섞는다.
+static const GameScene::WaveEntry g_stage3WaveTable[] =
+{
+	{ 2.0f,  L"Enemy1", {50, 100}, 5 },
+	{ 5.0f,  L"Enemy3", {50, 100}, 4 },
+	{ 8.0f,  L"Enemy2", {50, 100}, 5 },
+	{ 11.0f, L"Enemy4", {50, 100}, 4 },
+	{ 14.0f, L"Enemy1", {50, 100}, 5 },
+	{ 17.0f, L"Enemy3", {50, 100}, 5 },
+};
+
+// Stage1 보스 페이즈: 기존 Fan -> Circle -> Spiral 순서 그대로.
+static const vector<BossPhase> g_stage1BossPhases =
+{
+	{ BossPatternType::Fan, 50 },
+	{ BossPatternType::Circle, 20 },
+	{ BossPatternType::Spiral, 0 },
+};
+
+// Stage2 보스 페이즈: 유도탄 -> 예고 판정(낙뢰) -> 원형탄.
+static const vector<BossPhase> g_stage2BossPhases =
+{
+	{ BossPatternType::Homing, 100 },
+	{ BossPatternType::Telegraph, 50 },
+	{ BossPatternType::Circle, 0 },
+};
+
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
 // ObjectPool<T> (vector<T>) 값 자체를 가지고 있는 풀을 생성하는것도,
 // cpp에서 인스턴스화할때 생성됨.
@@ -107,6 +135,30 @@ void GameScene::Update(float deltaTime)
 		actor->Update(deltaTime);
 	}
 
+	
+	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_1))
+	{
+		if (_boss) _boss->Destroy();
+		_bossSpawned = false;
+		_boss = nullptr;
+		_state = GameSceneState::Playing;
+		_stageElapsedTime = 0.f;
+		_nextWaveIndex = 0;
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"World_BG");
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"World_BG");
+	}
+	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_2))
+	{
+		if (_boss) _boss->Destroy();
+		_bossSpawned = false;
+		_boss = nullptr;
+		_state = GameSceneState::Stage2;
+		_stageElapsedTime = 0.f;
+		_nextStage2WaveIndex = 0;
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
+	}
+
 	switch(_state)
 	{
 		case GameSceneState :: Ready : 
@@ -134,7 +186,7 @@ void GameScene::Update(float deltaTime)
 			if (!_bossSpawned)
 			{
 					Boss* boss = new Boss();
-					boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss");
+					boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage1BossPhases, 100);
 					_reservedAdd.push_back(boss);
 					_boss = boss;
 					_bossSpawned = true;
@@ -163,11 +215,47 @@ void GameScene::Update(float deltaTime)
 			}
 			else if (_nextStage2WaveIndex >= (int32)std::size(g_stage2WaveTable))
 			{
-				// 모든 웨이브를 소진했으니 Clear로 전환
+				// 모든 웨이브를 소진했으니 Stage2 보스로 전환
+				_bossSpawned = false;
+				_state = GameSceneState :: Stage2Boss;
+			}
+			break;
+		case GameSceneState :: Stage2Boss :
+			// Boss 상태와 동일한 패턴: 처음 들어온 프레임에만 스폰, 죽으면 Clear로 전환
+			if (!_bossSpawned)
+			{
+				Boss* boss = new Boss();
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage2BossPhases, 150);
+				_reservedAdd.push_back(boss);
+				_boss = boss;
+				_bossSpawned = true;
+			}
+			else if (_boss == nullptr)
+			{
+				// Stage3도 Stage1->Stage2 전환과 마찬가지로 경과시간/웨이브 인덱스를 리셋한다.
+				_stageElapsedTime = 0.f;
+				_state = GameSceneState :: Stage3;
+			}
+			break;
+		case GameSceneState :: Stage3 :
+			_stageElapsedTime += deltaTime;
+			while (_nextStage3WaveIndex < std::size(g_stage3WaveTable) && g_stage3WaveTable[_nextStage3WaveIndex].time <= _stageElapsedTime)
+			{
+				SpawnWave(g_stage3WaveTable[_nextStage3WaveIndex]);
+				_nextStage3WaveIndex++;
+			}
+			if (_player == nullptr)
+			{
+				_state = GameSceneState :: GameOver;
+			}
+			else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3WaveTable))
+			{
+				// TODO(3주차): 중간보스/최종보스가 아직 없어서 임시로 Clear로 보낸다.
+				//  중간보스를 붙일 때 이 분기를 Stage3MidBoss 상태로 바꿀 것.
 				_state = GameSceneState :: Clear;
 			}
 			break;
-		case GameSceneState :: Clear : 
+		case GameSceneState :: Clear :
 			break;
 		case GameSceneState :: GameOver : 
 			if(InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
@@ -291,7 +379,7 @@ void GameScene::DeleteActor(Actor* actor)
 }
 
 
-void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed)
+void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed)
 {
 	
 	Bullet* bullet = _bulletPool.Acquire(); // new Bullet();
@@ -300,7 +388,7 @@ void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float spee
 	if(bullet == nullptr)
 		return;
 
-	bullet->Init(type, dir, speed);
+	bullet->Init(type, dir, speed, isHoming, turnSpeed);
 	bullet->SetPos(pos);
 
 	_reservedAdd.push_back(bullet);
@@ -360,6 +448,41 @@ void GameScene::FireRandom(Vector pos, BulletType type, int32 count, float speed
 		float radian = DegreeToRadian(random_dir);
 		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
 	}
+}
+
+void GameScene::FireHoming(Vector pos, BulletType type, Vector dir, float speed, float turnSpeed)
+{
+	CreateBullet(pos, type, dir, speed, true, turnSpeed);
+}
+
+Actor* GameScene::FindNearestEnemy(Vector pos)
+{
+	Actor* nearest = nullptr;
+	float nearestDistSq = 0.f;
+
+	for (Actor* enemy : GetRenderList(RenderLayer::Enemy))
+	{
+		Vector diff = enemy->GetPos() - pos;
+		float distSq = diff.LengthSquared();
+		if (nearest == nullptr || distSq < nearestDistSq)
+		{
+			nearest = enemy;
+			nearestDistSq = distSq;
+		}
+	}
+
+	if (_boss != nullptr)
+	{
+		Vector diff = _boss->GetPos() - pos;
+		float distSq = diff.LengthSquared();
+		if (nearest == nullptr || distSq < nearestDistSq)
+		{
+			nearest = _boss;
+			nearestDistSq = distSq;
+		}
+	}
+
+	return nearest;
 }
 
 

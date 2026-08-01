@@ -19,7 +19,9 @@ enum class BossPatternType
 {
 	Fan,
 	Circle,
-	Spiral
+	Spiral,
+	Homing,		// 유도탄
+	Telegraph,	// 예고 판정: 경고 표시 -> 지연 -> 원형탄 발동
 };
 
 struct BossPhase
@@ -33,7 +35,7 @@ class Boss : public Airplane
 	using Super = Airplane;
 
 public:
-	void Init(Vector pos, wstring key);
+	void Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp = 100);
 	virtual void Destroy() override;
 
 	virtual void Update(float deltaTime) override;
@@ -54,15 +56,16 @@ private:
 	void transitionToNextPhase();
 	void shootBullet();
 	void shootSpiralBullet();
+	void shootTelegraphBullet();
 private:
 	int32 _hp = 0;
 	int32 _maxHp = 100;
 
-	// TODO(2주차 Day4): 페이즈 목록(vector<BossPhase> 등)과 현재 페이즈 인덱스
 	vector<BossPhase> _phases;
 	int32 _curPhaseIndex =0;
 	int32 _shootTimerId = -1;
 	int32 _spiralShootTimerId = -1;
+	int32 _telegraphTimerId = -1;
 	float _spiralAngle = 0.f;
 
 	Vector _moveTargetPos;

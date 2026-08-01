@@ -41,6 +41,11 @@ void Player::Update(float deltaTime)
 		_fireCooldown -= deltaTime;
 	}
 
+	if (_subFireCooldown > 0.f)
+	{
+		_subFireCooldown -= deltaTime;
+	}
+
 	// TODO(1주차 Day3~4): 저속 이동 구현 (기획서 5장)
 	//  목표: Shift를 누르고 있는 동안 이동 속도를 40~50%로 낮춘다.
 	//        탄막 사이를 정밀하게 빠져나가기 위한 필수 기능이다.
@@ -82,6 +87,12 @@ void Player::Update(float deltaTime)
 		move(_speed * deltaTime, 0);
 	}
 
+	if (InputManager::GetInstance().GetButtonDown(KeyType::F2))
+	{
+		_debugInvincible = !_debugInvincible;
+		
+	}
+
 	// TODO(1주차 Day3~4): 자동 연사로 바꿀 것 (기획서 5장)
 	//  현재: GetButtonDown이라 '누르는 순간 딱 1발'만 나간다. 연사하려면 키를 계속 두드려야 한다.
 	//  목표: 키를 누르고 있으면 일정 간격으로 계속 발사된다.
@@ -97,6 +108,21 @@ void Player::Update(float deltaTime)
 
 		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
 		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+	}
+
+	// 보조 공격: SpaceBar. 가장 가까운 적을 향해 유도탄을 쏜다.
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::SpaceBar) && _subFireCooldown <= 0.f)
+	{
+		Vector dir(0, -1);
+		Actor* target = Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
+		if (target != nullptr)
+		{
+			dir = target->GetPos() - GetPos();
+			dir.Normalize();
+		}
+
+		Game::GetInstance().GetScene()->FireHoming(GetPos(), BulletType::Player, dir, 400.f, 240.f);
+		_subFireCooldown = _subFireInterval;
 	}
 
 	// TODO(1주차 Day3~4): 폭탄 구현 (기획서 5장)
@@ -170,7 +196,7 @@ void Player::move(float x, float y)
 //        (Scene::removeActor()가 _player를 nullptr로 밀어주긴 하지만, 부활 처리가 복잡해진다)
 void Player::takeDamage()
 {
-	if(_invincibleTime > 0.f)
+	if(_invincibleTime > 0.f || _debugInvincible == true)
 	return;
 
 	_lives -= 1;

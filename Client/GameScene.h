@@ -59,6 +59,8 @@ public:
 		Playing,
 		Boss,
 		Stage2,
+		Stage2Boss,
+		Stage3,
 		Clear,
 		GameOver
 	};
@@ -72,13 +74,14 @@ public:
 	// 씬에서 관리되는 Actor중에 하나 삭제해달라고 요청
 	void DeleteActor(class Actor* actor);
 
-	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f);
+	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f);
 	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f);
 	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
 	void FireFan(Vector pos,BulletType type,Vector dir,float angleSpread,int32 count,float speed);
 	void FireCircle(Vector pos, BulletType type, int32 count, float speed);
 	void FireSpiral(Vector pos,BulletType type,int32 count,float speed,float& rotationAngle, float rotationSpeed);
 	void FireRandom(Vector pos, BulletType type, int32 count, float speed);
+	void FireHoming(Vector pos, BulletType type, Vector dir, float speed = 500.f, float turnSpeed = 180.f);
 
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
@@ -94,6 +97,7 @@ public:
 	int32 GetGridSize() const { return _gridSize; }
 	class Player* GetPlayer() const { return _player; }
 	class Boss* GetBoss() const { return _boss; }
+	Actor* FindNearestEnemy(Vector pos);
 
 	int32 GetScore() const { return _score;}
 	void AddScore(int32 amount) {_score += amount;}
@@ -161,6 +165,7 @@ private:
 	float _stageElapsedTime = 0.f;
 	int32 _nextWaveIndex = 0;
 	int32 _nextStage2WaveIndex = 0;
+	int32 _nextStage3WaveIndex = 0;
 
 	// 카메라 좌표: 화면 중앙에 고정 (종스크롤 STG는 화면 고정 + 배경 스크롤 구조)
 	// ConvertWorldToScreen()의 offset이 0이 되어 월드 좌표 = 화면 좌표가 된다.

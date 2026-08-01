@@ -106,6 +106,7 @@ void Enemy::OnEnter(Actor* other) // other : Player
 		{
 			// 플레이어의 총알이다.
 			_hp -= 1;
+			bullet->Destroy();
 
 			if(_hp <= 0)
 			{

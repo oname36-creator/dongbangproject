@@ -5,7 +5,7 @@ class Bullet : public Actor // (Actor=GameObject)
 {
 	using Super = Actor;
 public:
-	void Init(BulletType type, Vector dir, float speed);
+	void Init(BulletType type, Vector dir, float speed, bool isHoming = false, float turnSpeed = 180.f);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 
@@ -33,6 +33,8 @@ private:
 	Vector _dir;		// 발사 방향
 	float _moveSpeed = 500.f;	// 발사 속도
 	BulletType _type;
+	bool _isHoming = false;
+	float _turnSpeed = 180.f;
 };
 
 // 나중에 아이템이 추가되어도 크게 코드를 수정해야할 일이 없다.
