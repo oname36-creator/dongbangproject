@@ -31,6 +31,10 @@ void CollisionManager::Init()
 
 void CollisionManager::Update()
 {
+	// 현재 씬이 GameScene이 아니면(Title/Result/Ending 등) 그리드 정보를 물어볼 대상이 없다.
+	if (Game::GetInstance().GetScene() == nullptr)
+		return;
+
 	// 현재 상태에 대한 충돌체크만 수행해서 결과를 저장
 	_curr.clear();
 

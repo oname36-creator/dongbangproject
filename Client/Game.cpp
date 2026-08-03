@@ -42,16 +42,6 @@ void Game::Init(HWND hwnd)
 
 	// full path c:// /// // /
 	// 리소스 매니저 초기화
-	// TODO(1주차 Day0): 리소스 경로 고정 ★ 다른 무엇보다 먼저 할 일
-	//  문제: GetCurrentDirectory()는 '실행 시점의 작업 디렉터리'를 돌려준다.
-	//        VS 디버거로 실행하면 작업 디렉터리 기본값이 $(ProjectDir) = 레포 루트인데,
-	//        거기에 "../Resources/"를 붙이면 레포 '바깥'을 가리키게 된다 → 리소스 로드 실패.
-	//  할 일: 아래 L"../Resources/" 를 L"Resources/" 로 바꾸고,
-	//        프로젝트 속성 > 디버깅 > 작업 디렉터리가 $(ProjectDir)인지 확인한다.
-	//  검증: 실행했을 때 "Failed to open JSON file" 메시지박스가 안 뜨면 성공.
-	//  참고: 이 경로 하나를 ResourceManager와 DataManager가 함께 쓴다(바로 아래 줄들).
-	//        그리고 Resources/ 폴더가 지금 비어 있다 → 플레이스홀더 bmp와
-	//        Resources/Data/ResourceData.json 을 먼저 채워야 화면에 뭐라도 나온다.
 	wchar_t buffer[MAX_PATH];
 	DWORD length = ::GetCurrentDirectory(MAX_PATH, buffer);
 	fs::path currentPath = fs::path(buffer) / L"Resources/";
@@ -62,13 +52,6 @@ void Game::Init(HWND hwnd)
 	DataManager::GetInstance().Load();
 
 	// GameScene 초기화
-	// Scene(얇은 베이스)/GameScene(실제 내용) 분리는 끝났다. 지금은 씬이 GameScene
-	// 하나뿐이라 Game이 GameScene*을 직접 들고 있다.
-	//
-	// TODO(2주차 이후, TitleScene/ResultScene을 실제로 붙일 때): SceneManager를 만들고
-	//  '씬 전환'을 프레임 끝에서 처리하도록 바꿀 것 (Update() 도중 현재 씬을 delete하면
-	//  크래시한다 — GameScene::_reservedAdd/_reservedRemove 같은 예약 패턴을 참고).
-
 	SceneManager::GetInstance().ChangeScene(new TitleScene());
 
 	// CollisionManager 초기화

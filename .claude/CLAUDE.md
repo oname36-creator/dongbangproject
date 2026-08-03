@@ -2,6 +2,68 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 작업 방식 (Behavioral Guidelines)
+
+일반적인 LLM 코딩 실수를 줄이기 위한 행동 가이드라인. 아래는 신중함을 속도보다 우선하는 편향이 있으니, 사소한 작업에는 재량껏 판단할 것.
+
+### 1. Think Before Coding
+
+**Don't assume. Don't hide confusion. Surface tradeoffs.**
+
+Before implementing:
+- State your assumptions explicitly. If uncertain, ask.
+- If multiple interpretations exist, present them - don't pick silently.
+- If a simpler approach exists, say so. Push back when warranted.
+- If something is unclear, stop. Name what's confusing. Ask.
+
+### 2. Simplicity First
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+### 3. Surgical Changes
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+### 4. Goal-Driven Execution
+
+**Define success criteria. Loop until verified.**
+
+Transform tasks into verifiable goals:
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+**이 가이드라인이 잘 작동하고 있다는 신호:** diff에 불필요한 변경이 줄어들고, 과도한 설계로 인한 재작업이 줄어들고, 구현 후가 아니라 구현 전에 확인 질문이 나옴.
+
 ## Project overview
 
 WinAPI(Win32 GDI) 기반 2D 종스크롤 슈팅 게임으로 동방프로젝트(Touhou Project) 모작을 목표로 한다 (`README.md`). 교수님이 제공한 "1945" 슈팅 예제를 기반으로 이식했고, 현재 게임 로직(Player/Enemy/Bullet 등)은 아직 원본 예제 그대로이며 동방 컨셉으로의 전환은 진행 전 단계다. 엔트리포인트 파일명 등 원본의 "Game1945" 네이밍은 `DongbangProject`로 모두 교체했다.
@@ -21,7 +83,7 @@ WinAPI(Win32 GDI) 기반 2D 종스크롤 슈팅 게임으로 동방프로젝트(
 
 ## 폴더 구조 (Engine / Client / Common)
 
-레포 루트에는 `DongbangProject.sln`/`.vcxproj`/`.vcxproj.filters`, `.gitignore`, `README.md`, `CLAUDE.md`, `Resources/`(에셋 placeholder)만 있고, 소스는 전부 아래 세 폴더 밑에 있다.
+레포 루트에는 `DongbangProject.sln`/`.vcxproj`/`.vcxproj.filters`, `.gitignore`, `README.md`, `.claude/CLAUDE.md`, `Resources/`(에셋 placeholder)만 있고, 소스는 전부 아래 세 폴더 밑에 있다.
 
 - `Engine/` — 재사용 가능한 프레임워크 코드. `Actor`(모든 게임 오브젝트의 기반 클래스), `Component`(Actor에 붙는 부가 기능: `ImageRenderer`/`SpriteAnimRenderer`/`ColliderCircle`), `ObjectPool<T>`, `CollisionManager`, `ResourceManager`/`Texture`, `TimeManager`, `InputManager`, `DataManager`/`DataObject`, `Singleton<T>`.
 - `Client/` — 이 게임 고유의 콘텐츠/로직 + Win32 엔트리포인트. `DongbangProject.cpp/h/.rc/.ico`, `small.ico`(WinMain, 윈도우 생성, 메시지 루프, 리소스 스크립트 — 원본 "Game1945" 네이밍에서 전부 교체됨), `Game`(최상위 오케스트레이터), `Scene`(플레이 필드의 모든 Actor 소유), `Player`/`Enemy`(둘 다 `Airplane` 상속), `Bullet`, `Effect`, `Background`/`WorldBG`, `UIManager`, `ResourceData`(이 게임 전용 에셋 JSON 스키마). **동방프로젝트 컨셉 작업(캐릭터, 탄막 패턴 등)은 주로 이 폴더에서 진행하게 된다.**

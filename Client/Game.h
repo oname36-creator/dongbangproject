@@ -20,10 +20,6 @@ public:
 
 	// Player/Enemy/UIManager가 CreateBullet/CreateEffect/GetPlayer 등
 	// GameScene 전용 기능을 바로 쓸 수 있도록, 일부러 Scene*이 아니라 GameScene*을 돌려준다.
-	//
-	// TODO(2주차 이후, TitleScene/ResultScene을 실제로 붙일 때): Engine/에 SceneManager
-	//  싱글톤을 만들고 이 함수와 _gamescene 멤버를 그쪽으로 옮길 것. 지금은 씬이
-	//  GameScene 하나뿐이라 Game이 직접 들고 있어도 당장은 문제 없다.
 	class GameScene* GetScene() const;
 	
 

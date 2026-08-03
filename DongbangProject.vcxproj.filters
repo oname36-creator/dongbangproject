@@ -106,6 +106,9 @@
     <ClInclude Include="Client\ResultScene.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="Client\EndingScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
     <ClInclude Include="Common\Util.h">
       <Filter>Common</Filter>
     </ClInclude>
@@ -211,6 +214,9 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\ResultScene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\EndingScene.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Common\Util.cpp">

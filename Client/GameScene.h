@@ -12,19 +12,6 @@ class Bullet;
 class Boss;
 
 // 게임화면에 등장하는 모든 오브젝트를 관리
-//
-// TODO(1주차 Day1~2): 이 클래스를 둘로 쪼갤 것
-//  현재: Scene 하나가 '씬의 공통 골격'과 '게임 플레이 로직'을 동시에 들고 있다.
-//        virtual 함수가 하나도 없어서 다른 씬으로 갈아끼울 수 없다.
-//  목표:
-//   - Scene        : 추상 베이스. virtual ~Scene(), virtual Init/Cleanup/Update/Render 만 가진다.
-//   - GameScene    : 지금 이 파일의 내용 전부(액터 관리/풀/그리드/스폰)를 옮겨 담는다.
-//   - TitleScene   : 배경 + "Press Z to Start" + 키 입력 → GameScene으로 전환
-//   - ResultScene  : 점수 표시 + 키 입력 → TitleScene으로 전환
-//  힌트: Actor가 이미 같은 구조다(Actor.h의 virtual Update/Render를 Player/Enemy가 override).
-//        똑같은 방식으로 만들면 된다.
-//  주의: 아래 생성자/소멸자 주석에 적힌 이유(ObjectPool<T> 때문에 cpp에 구현) 때문에
-//        GameScene의 생성자/소멸자도 반드시 cpp 쪽에 둬야 한다.
 class GameScene : public Scene
 {
 public:
@@ -41,18 +28,6 @@ public:
 
 
 
-	// TODO(1주차 Day6~7): GameScene 상태머신을 추가할 것
-	//  목표(기획서 3장): Ready → Playing → Boss → Clear / GameOver
-	//   - Ready    : 스테이지 이름/조작법을 1~2초 보여준다
-	//   - Playing  : 웨이브 스폰과 일반 전투
-	//   - Boss     : 보스 UI 활성화 (2주차에 채운다. 1주차엔 상태만 만들어 두면 된다)
-	//   - Clear    : 남은 탄 정리 → 점수 집계 → ResultScene 전환
-	//   - GameOver : 입력 제한 → 재시작/타이틀 이동
-	//  할 일: enum class GameState 를 선언하고 _state 멤버를 둔 뒤,
-	//        Update()에서 switch로 분기한다. (1주차엔 switch 골격만 있어도 충분)
-	//  힌트: Ready의 '1~2초 대기'는 TimeManager::AddTimer(func, 2.0f, false)로 간단히 된다.
-	//  함정: GameOver 상태에서도 Update가 계속 돌면 적이 계속 스폰된다.
-	//        상태별로 '무엇을 멈출지'를 반드시 정해라.
 	enum class GameSceneState
 	{
 		Ready,
@@ -61,6 +36,8 @@ public:
 		Stage2,
 		Stage2Boss,
 		Stage3,
+		Stage3MidBoss,
+		Stage3Boss,
 		Clear,
 		GameOver
 	};
@@ -82,6 +59,7 @@ public:
 	void FireSpiral(Vector pos,BulletType type,int32 count,float speed,float& rotationAngle, float rotationSpeed);
 	void FireRandom(Vector pos, BulletType type, int32 count, float speed);
 	void FireHoming(Vector pos, BulletType type, Vector dir, float speed = 500.f, float turnSpeed = 180.f);
+	void FireGrid(Vector origin, BulletType type, Vector dir, int32 raws, int32 cols, float spacingX, float spacingY, float speed);
 
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
@@ -156,16 +134,12 @@ private:
 	ObjectPool<Bullet> _bulletPool;
 	ObjectPool<Enemy>  _enemyPool;
 
-	// TODO(1주차 Day6~7): 점수 시스템 추가 (기획서 9장)
-	//  int32 _score = 0; 하나면 시작할 수 있다.
-	//  가산 지점은 이미 표시되어 있다 → Enemy::OnEnter()의 "// 점수 증가" 주석 자리.
-	//  배점: 소형 적 100 / 중형 1,000 / 보스 페이즈 10,000 (기획서 9장 표)
-	//  참고: 파일 저장은 지금 하지 마라. 실행 중에만 유지되면 1주차 목표로는 충분하다.
 	int32 _score = 0;
 	float _stageElapsedTime = 0.f;
 	int32 _nextWaveIndex = 0;
 	int32 _nextStage2WaveIndex = 0;
 	int32 _nextStage3WaveIndex = 0;
+	bool _stage3Wave2 = false;	// false: Stage3 전반부 웨이브 재생 중, true: 중간보스 격파 후 후반부 웨이브 재생 중
 
 	// 카메라 좌표: 화면 중앙에 고정 (종스크롤 STG는 화면 고정 + 배경 스크롤 구조)
 	// ConvertWorldToScreen()의 offset이 0이 되어 월드 좌표 = 화면 좌표가 된다.

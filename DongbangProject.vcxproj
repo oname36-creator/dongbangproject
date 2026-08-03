@@ -173,6 +173,7 @@
     <ClInclude Include="Client\WorldBG.h" />
     <ClInclude Include="Client\TitleScene.h" />
     <ClInclude Include="Client\ResultScene.h" />
+    <ClInclude Include="Client\EndingScene.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Engine\Actor.cpp" />
@@ -213,6 +214,7 @@
     <ClCompile Include="Client\WorldBG.cpp" />
     <ClCompile Include="Client\TitleScene.cpp" />
     <ClCompile Include="Client\ResultScene.cpp" />
+    <ClCompile Include="Client\EndingScene.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Client\DongbangProject.rc" />

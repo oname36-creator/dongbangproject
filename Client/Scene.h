@@ -8,14 +8,6 @@
 
 
 // 모든 씬의 얇은 베이스. 실제 내용은 GameScene(Client/GameScene.h)에 있다.
-//
-// TODO(2주차 이후, TitleScene/ResultScene을 실제로 만들 때):
-//  - Update(float deltaTime)를 여기 virtual로 추가할 것. 지금은 Game이 GameScene*을
-//    직접 들고 있어서 필요 없지만, SceneManager가 Scene*(베이스 포인터)로 여러 씬을
-//    갈아끼우게 되는 순간 Update도 다형 호출이 필요해진다.
-//  - TitleScene / ResultScene을 이 클래스를 상속해서 추가한다 (배경 + 안내 문구 +
-//    키 입력 정도의 껍데기면 충분하다).
-//  힌트: Actor가 이미 같은 구조다(Actor.h의 virtual Update/Render를 Player/Enemy가 override).
 class Scene
 {
 public:

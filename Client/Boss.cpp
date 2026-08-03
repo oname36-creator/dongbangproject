@@ -9,13 +9,17 @@
 
 namespace
 {
-	// 패턴별 재발동 간격. 예고 판정은 지연(1.8초) + 여유를 둬서 경고가 겹쳐 쌓이지 않게 한다.
-	float GetShootInterval(BossPatternType pattern)
+	// Spiral은 타임라인의 "정해진 시각에 한 번 발사" 모델이 아니라, 페이즈 내내
+	// 0.1초 간격으로 계속 도는 연속 발사(_spiralShootTimerId)로 처리된다.
+	// 그래서 페이즈 진입/전환 시 이 페이즈의 타임라인에 Spiral이 있는지만 확인하면 된다.
+	bool ContainsSpiral(const vector<TimelineStep>& timeline)
 	{
-		if (pattern == BossPatternType::Telegraph)
-			return 2.5f;
-
-		return 1.0f;
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::Spiral)
+				return true;
+		}
+		return false;
 	}
 }
 
@@ -27,24 +31,30 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp)
 	_hp = maxHp;
 	_curPhaseIndex = 0;
 	_phases = phases;
-	_shootTimerId = TimeManager::GetInstance().AddTimer([this]() {shootBullet();}, GetShootInterval(_phases[_curPhaseIndex].pattern), true);
+	_phaseElapsedTime = 0.f;
+	_timelineIndex = 0;
+
 	_moveTargetPos = Vector(GWinSizeX*0.5f, 150.f);
 
-	_moveTimerId = TimeManager::GetInstance().AddTimer([this]() 
+	_moveTimerId = TimeManager::GetInstance().AddTimer([this]()
 	{
 		_moveTargetPos.x = GWinSizeX*0.25f + (rand()%(int)(GWinSizeX*0.5f));
 		_moveTargetPos.y = 150.f;
 	}, 3.0f, true);
 
+	if (ContainsSpiral(_phases[_curPhaseIndex].timeline))
+	{
+		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet(); }, 0.1f, true);
+	}
 }
 
 void Boss::Destroy()
 {
 	Super::Destroy();
-	TimeManager::GetInstance().Remove(_shootTimerId);
 	TimeManager::GetInstance().Remove(_moveTimerId);
 	TimeManager::GetInstance().Remove(_spiralShootTimerId);
 	TimeManager::GetInstance().Remove(_telegraphTimerId);
+	TimeManager::GetInstance().Remove(_burstShootTimerId);
 }
 
 void Boss::Update(float deltaTime)
@@ -57,6 +67,23 @@ void Boss::Update(float deltaTime)
 	pos += dir * (_moveSpeed * deltaTime);
 	SetPos(pos);
 	
+	_phaseElapsedTime += deltaTime;
+	const vector<TimelineStep>& timeline = _phases[_curPhaseIndex].timeline;
+	while (_timelineIndex < (int32)timeline.size() && timeline[_timelineIndex].time <= _phaseElapsedTime)
+	{
+		// Spiral은 연속 타이머(_spiralShootTimerId)가 따로 쏘고 있으므로 여기서는 건너뛴다.
+		if (timeline[_timelineIndex].pattern != BossPatternType::Spiral)
+		{
+			shootBullet(timeline[_timelineIndex].pattern);
+		}
+		_timelineIndex++;
+	}
+	if (_phaseElapsedTime >= _phases[_curPhaseIndex].cycleLength)
+	{
+		_phaseElapsedTime = 0.f;
+		_timelineIndex = 0;   // 사이클 리셋 -> 처음부터 반복
+	}
+
 }
 
 void Boss::Render(HDC hdc)
@@ -100,19 +127,21 @@ void Boss::transitionToNextPhase()
 
 	_curPhaseIndex++;
 
-	// 페이즈가 바뀌면 재발동 간격도 새 패턴에 맞게 다시 건다.
-	TimeManager::GetInstance().Remove(_shootTimerId);
-	_shootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootBullet(); }, GetShootInterval(_phases[_curPhaseIndex].pattern), true);
+	// 새 페이즈의 타임라인을 처음부터 재생하도록 리셋
+	_phaseElapsedTime = 0.f;
+	_timelineIndex = 0;
 
-	if(_phases[_curPhaseIndex].pattern == BossPatternType::Spiral)
+	// 이전 페이즈의 연속 스파이럴 타이머는 정리하고, 새 페이즈에 Spiral이 있으면 다시 건다.
+	TimeManager::GetInstance().Remove(_spiralShootTimerId);
+	if (ContainsSpiral(_phases[_curPhaseIndex].timeline))
 	{
 		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet();}, 0.1f, true);
 	}
 }
 
-void Boss::shootBullet()
+void Boss::shootBullet(BossPatternType pattern)
 {
-	switch(_phases[_curPhaseIndex].pattern)
+	switch(pattern)
 	{
 		case BossPatternType::Fan :
 			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f, 5, 300.f);
@@ -120,7 +149,7 @@ void Boss::shootBullet()
 		case BossPatternType::Circle :
 			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy, 12, 300.f);
 			break;
-		case BossPatternType::Homing :
+		case BossPatternType::AimedBurst :
 		{
 			Vector dir(0, 1);
 			Player* player = Game::GetInstance().GetScene()->GetPlayer();
@@ -129,11 +158,24 @@ void Boss::shootBullet()
 				dir = player->GetPos() - GetPos();
 				dir.Normalize();
 			}
-			Game::GetInstance().GetScene()->FireHoming(GetPos(), BulletType::Enemy, dir, 250.f, 150.f);
+			_burstDir = dir;
+			_burstShotsRemaining = 8;
+
+			// 이전 버스트가 아직 안 끝났으면 정리하고 새로 시작 (중복 타이머 방지)
+			TimeManager::GetInstance().Remove(_burstShootTimerId);
+			_burstShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootAimedBurst(); }, 0.04f, true);
 			break;
 		}
 		case BossPatternType::Telegraph :
 			shootTelegraphBullet();
+			break;
+		case BossPatternType::Grid :
+			// 화면 폭(480px)에 걸쳐 6열 x 3행 격자, 아래로 스크롤.
+			// origin.x를 보스 위치가 아니라 화면 왼쪽 기준(40px)으로 고정해야 화면 전체를 덮는 격자가 된다.
+			Game::GetInstance().GetScene()->FireGrid(Vector(40.f, GetPos().y), BulletType::Enemy, Vector(0, 1), 3, 6, 80.f, 50.f, 220.f);
+			break;
+		case BossPatternType::Spiral :
+			// Update()에서 이미 걸러내고 연속 타이머(_spiralShootTimerId)로 처리하므로 여기선 아무것도 안 함.
 			break;
 	}
 }
@@ -141,6 +183,19 @@ void Boss::shootBullet()
 void Boss::shootSpiralBullet()
 {
 Game::GetInstance().GetScene()->FireSpiral(GetPos(), BulletType::Enemy, 2, 300.f, _spiralAngle, 10.f );
+}
+
+void Boss::shootAimedBurst()
+{
+	// 고정해둔 방향으로 한 발씩 연사. 총알들이 시간차를 두고 같은 경로를 따라가면서
+	// 실시간으로 이어진 줄처럼 보인다.
+	Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Enemy, _burstDir, 300.f);
+
+	_burstShotsRemaining--;
+	if (_burstShotsRemaining <= 0)
+	{
+		TimeManager::GetInstance().Remove(_burstShootTimerId);
+	}
 }
 
 void Boss::shootTelegraphBullet()

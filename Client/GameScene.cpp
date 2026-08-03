@@ -15,7 +15,9 @@
 #include "GameScene.h"
 #include "InputManager.h"
 #include "ResultScene.h"
+#include "EndingScene.h"
 #include "SceneManager.h"
+
 #include <random>
 
 using namespace std;
@@ -50,32 +52,56 @@ static const GameScene::WaveEntry g_stage2WaveTable[] =
 	{ 11.0f, L"Enemy3", {50, 100}, 4 },
 };
 
-// Stage 3 웨이브 테이블. 기획서 3장 "기존 패턴의 종합 회피" 취지대로
-// 4종 패턴(Zigzag/Fan/Circle/Aimed = Enemy1~4)을 한 바퀴 더 촘촘하게 섞는다.
-static const GameScene::WaveEntry g_stage3WaveTable[] =
+// Stage 3 웨이브 테이블. 원작 동방 스테이지 구조(잡몹 웨이브 -> 중간보스 -> 잡몹 웨이브 -> 스테이지 보스)를
+// 따라가기 위해 전반부/후반부로 나눈다. 각 테이블의 time은 "그 절반이 시작된 후 경과 시간" 기준
+// (Stage1->Stage2 전환 시 _stageElapsedTime을 리셋하는 것과 같은 이유).
+static const GameScene::WaveEntry g_stage3Wave1Table[] =
 {
 	{ 2.0f,  L"Enemy1", {50, 100}, 5 },
 	{ 5.0f,  L"Enemy3", {50, 100}, 4 },
 	{ 8.0f,  L"Enemy2", {50, 100}, 5 },
-	{ 11.0f, L"Enemy4", {50, 100}, 4 },
-	{ 14.0f, L"Enemy1", {50, 100}, 5 },
-	{ 17.0f, L"Enemy3", {50, 100}, 5 },
+};
+
+static const GameScene::WaveEntry g_stage3Wave2Table[] =
+{
+	{ 2.0f,  L"Enemy4", {50, 100}, 4 },
+	{ 5.0f,  L"Enemy1", {50, 100}, 5 },
+	{ 8.0f,  L"Enemy3", {50, 100}, 5 },
 };
 
 // Stage1 보스 페이즈: 기존 Fan -> Circle -> Spiral 순서 그대로.
+// 각 페이즈의 timeline이 스텝 1개뿐이고 cycleLength가 옛 발사 간격과 같아서,
+// "한 패턴을 고정 간격으로 무한 반복"하던 예전 동작과 똑같이 움직인다.
+// (Spiral 스텝은 실제로는 연속 타이머가 쏘므로 cycleLength 값 자체는 의미 없음)
 static const vector<BossPhase> g_stage1BossPhases =
 {
-	{ BossPatternType::Fan, 50 },
-	{ BossPatternType::Circle, 20 },
-	{ BossPatternType::Spiral, 0 },
+	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 50 },
+	{ { { 0.f, BossPatternType::Circle } }, 1.0f, 20 },
+	{ { { 0.f, BossPatternType::Spiral } }, 1.0f, 0 },
 };
 
-// Stage2 보스 페이즈: 유도탄 -> 예고 판정(낙뢰) -> 원형탄.
+// Stage2 보스 페이즈: 조준 라인탄 -> 예고 판정(낙뢰) -> 원형탄.
 static const vector<BossPhase> g_stage2BossPhases =
 {
-	{ BossPatternType::Homing, 100 },
-	{ BossPatternType::Telegraph, 50 },
-	{ BossPatternType::Circle, 0 },
+	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 100 },
+	{ { { 0.f, BossPatternType::Telegraph } }, 2.5f, 50 },
+	{ { { 0.f, BossPatternType::Circle } }, 1.0f, 0 },
+};
+
+// Stage3 중간보스 페이즈: 최종보스보다 약하게 페이즈 2개만.
+static const vector<BossPhase> g_stage3MidBossPhases =
+{
+	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 60 },
+	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 0 },
+};
+
+// Stage3 최종보스 페이즈: 4페이즈 (기획서 3장 "최종 보스 4페이즈").
+static const vector<BossPhase> g_stage3BossPhases =
+{
+	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 150 },
+	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 100 },
+	{ { { 0.f, BossPatternType::Telegraph } }, 2.5f, 50 },
+	{ { { 0.f, BossPatternType::Spiral } }, 1.0f, 0 },
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
@@ -119,6 +145,11 @@ void GameScene::Cleanup()
 	// 씬에 등장하는 모든 객체들의 delete 담당
 	for (auto iter : _actors)
 	{
+		// CollisionManager는 싱글톤이라 씬이 바뀌어도 살아남는다. 여기서 등록 해제를
+		// 안 하면, 곧 delete되거나(풀 소멸 시) 메모리가 풀릴 액터 포인터가
+		// _collisionCheckList/_prev/_curr에 죽은 채로 남아 다음 GameScene에서 크래시난다.
+		removeActor(iter);
+
 		// Scene이 new 한 객체는 delete 해도 된다.
 		if (iter->GetPool() == nullptr)
 		{
@@ -234,28 +265,85 @@ void GameScene::Update(float deltaTime)
 			{
 				// Stage3도 Stage1->Stage2 전환과 마찬가지로 경과시간/웨이브 인덱스를 리셋한다.
 				_stageElapsedTime = 0.f;
+				_nextStage3WaveIndex = 0;
+				_stage3Wave2 = false;
 				_state = GameSceneState :: Stage3;
 			}
 			break;
 		case GameSceneState :: Stage3 :
 			_stageElapsedTime += deltaTime;
-			while (_nextStage3WaveIndex < std::size(g_stage3WaveTable) && g_stage3WaveTable[_nextStage3WaveIndex].time <= _stageElapsedTime)
+			if (!_stage3Wave2)
 			{
-				SpawnWave(g_stage3WaveTable[_nextStage3WaveIndex]);
-				_nextStage3WaveIndex++;
+				// 전반부 웨이브 -> 다 쓰면 중간보스로.
+				while (_nextStage3WaveIndex < std::size(g_stage3Wave1Table) && g_stage3Wave1Table[_nextStage3WaveIndex].time <= _stageElapsedTime)
+				{
+					SpawnWave(g_stage3Wave1Table[_nextStage3WaveIndex]);
+					_nextStage3WaveIndex++;
+				}
+				if (_player == nullptr)
+				{
+					_state = GameSceneState :: GameOver;
+				}
+				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave1Table))
+				{
+					_bossSpawned = false;
+					_state = GameSceneState :: Stage3MidBoss;
+				}
 			}
-			if (_player == nullptr)
+			else
 			{
-				_state = GameSceneState :: GameOver;
+				// 후반부 웨이브 -> 다 쓰면 최종보스로.
+				while (_nextStage3WaveIndex < std::size(g_stage3Wave2Table) && g_stage3Wave2Table[_nextStage3WaveIndex].time <= _stageElapsedTime)
+				{
+					SpawnWave(g_stage3Wave2Table[_nextStage3WaveIndex]);
+					_nextStage3WaveIndex++;
+				}
+				if (_player == nullptr)
+				{
+					_state = GameSceneState :: GameOver;
+				}
+				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave2Table))
+				{
+					_bossSpawned = false;
+					_state = GameSceneState :: Stage3Boss;
+				}
 			}
-			else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3WaveTable))
+			break;
+		case GameSceneState :: Stage3MidBoss :
+			if (!_bossSpawned)
 			{
-				// TODO(3주차): 중간보스/최종보스가 아직 없어서 임시로 Clear로 보낸다.
-				//  중간보스를 붙일 때 이 분기를 Stage3MidBoss 상태로 바꿀 것.
+				Boss* boss = new Boss();
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage3MidBossPhases, 130);
+				_reservedAdd.push_back(boss);
+				_boss = boss;
+				_bossSpawned = true;
+			}
+			else if (_boss == nullptr)
+			{
+				// 중간보스 격파 -> 후반부 웨이브 재생을 위해 경과시간/인덱스를 리셋한다.
+				_stageElapsedTime = 0.f;
+				_nextStage3WaveIndex = 0;
+				_stage3Wave2 = true;
+				_state = GameSceneState :: Stage3;
+			}
+			break;
+		case GameSceneState :: Stage3Boss :
+			if (!_bossSpawned)
+			{
+				Boss* boss = new Boss();
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage3BossPhases, 250);
+				_reservedAdd.push_back(boss);
+				_boss = boss;
+				_bossSpawned = true;
+			}
+			else if (_boss == nullptr)
+			{
+				_stageElapsedTime = 0.f;
 				_state = GameSceneState :: Clear;
 			}
 			break;
 		case GameSceneState :: Clear :
+			SceneManager::GetInstance().ChangeScene(new EndingScene(_score));
 			break;
 		case GameSceneState :: GameOver : 
 			if(InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
@@ -484,7 +572,23 @@ Actor* GameScene::FindNearestEnemy(Vector pos)
 
 	return nearest;
 }
+void GameScene::FireGrid(Vector origin, BulletType type, Vector dir, int32 raws, int32 cols, float spacingX, float spacingY, float speed)
+{
+	dir.Normalize();
 
+	for(int32 r = 0; r < raws; ++r)
+	{
+		for(int32 c = 0; c < cols; ++c)
+		{
+			Vector spawnPos = Vector(
+				origin.x + (c * spacingX),
+				origin.y + (r * spacingY)
+			);
+			CreateBullet(spawnPos, type, dir, speed);
+		}
+	}
+	
+}
 
 void GameScene::CreateEffect(Vector pos)
 {
