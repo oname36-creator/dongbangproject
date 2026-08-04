@@ -79,6 +79,9 @@
     <ClInclude Include="Client\Enemy.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="Client\Item.h">
+      <Filter>Client</Filter>
+    </ClInclude>
     <ClInclude Include="Client\Game.h">
       <Filter>Client</Filter>
     </ClInclude>
@@ -187,6 +190,9 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Item.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\Game.cpp">

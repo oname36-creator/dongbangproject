@@ -147,6 +147,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Client\Enemy.h" />
+    <ClInclude Include="Client\Item.h" />
     <ClInclude Include="Common\framework.h" />
     <ClInclude Include="Client\Game.h" />
     <ClInclude Include="Client\GameScene.h" />
@@ -190,6 +191,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp" />
+    <ClCompile Include="Client\Item.cpp" />
     <ClCompile Include="Client\Game.cpp" />
     <ClCompile Include="Client\GameScene.cpp" />
     <ClCompile Include="Client\DongbangProject.cpp" />
