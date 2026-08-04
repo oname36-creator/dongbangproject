@@ -4,6 +4,7 @@
 #include "Game.h"
 #include "GameScene.h"
 #include "Player.h"
+#include "Item.h"
 #include "TimeManager.h"
 #include "colliderCircle.h"
 #include "ResourceManager.h"
@@ -130,8 +131,16 @@ void Enemy::OnEnter(Actor* other) // other : Player
 
 			if(randnum < 3)
 			{
-				Game::GetInstance().GetScene()->SpawnItem(GetPos());
+				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power );
 			}
+			uniform_int_distribution<int> randscore(1,10);
+			randnum = randscore (gen);
+
+			if(randnum < 3)
+			{
+				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Score );
+			}
+
 			}
 			// 파티클 재생
 		

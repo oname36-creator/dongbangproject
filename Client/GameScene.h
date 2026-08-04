@@ -2,6 +2,7 @@
 
 #include "Scene.h"
 #include "ObjectPool.h"
+#include "Item.h"
 
 
 //#include "Enemy.h"
@@ -10,7 +11,7 @@
 class Enemy;
 class Bullet;
 class Boss;
-class Item;
+
 
 // 게임화면에 등장하는 모든 오브젝트를 관리
 class GameScene : public Scene
@@ -40,6 +41,7 @@ public:
 		Stage3MidBoss,
 		Stage3Boss,
 		Clear,
+		Continue,
 		GameOver
 	};
 	// WaveEntry/g_waveTable은 GameScene.cpp 상단(파일 스코프)에 정의되어 있다.
@@ -67,7 +69,7 @@ public:
 	void ClearEnemyBullets();
 
 	void SpawnWave(const WaveEntry& wave);
-	void SpawnItem(Vector pos);
+	void SpawnItem(Vector pos, ItemKind kind);
 
 	// 좌표계 변환해주는 함수
 	Vector ConvertWorldToScreen(Vector worldPos);
@@ -80,11 +82,13 @@ public:
 	class Boss* GetBoss() const { return _boss; }
 	Actor* FindNearestEnemy(Vector pos);
 
+	
 	int32 GetScore() const { return _score;}
 	void AddScore(int32 amount) {_score += amount;}
 private:
 	void loadResources();
 	void createObjects();
+	void onPlayerDead();	// 플레이어 사망 시 호출: 컨티뉴 가능하면 Continue, 아니면 GameOver로 분기
 
 	// actor List / render List 의 동기화를 맞춰주기 위해서, 항상 호출되는 함수
 	void registerActor(Actor* actor);
@@ -138,6 +142,8 @@ private:
 	ObjectPool<Enemy>  _enemyPool;
 	ObjectPool<Item> _itemPool;
 
+	bool _isPaused = false;
+
 	int32 _score = 0;
 	float _stageElapsedTime = 0.f;
 	int32 _nextWaveIndex = 0;
@@ -152,6 +158,12 @@ private:
 	class Player* _player = nullptr;
 	class Boss* _boss = nullptr;
 	bool _bossSpawned = false;
+
+	// 컨티뉴 시스템: 최대 3번까지, 몇 번째를 선택 중인지(Yes/No)
+	int32 _continueCount = 0;
+	static constexpr int32 MAX_CONTINUE = 3;
+	bool _continueSelectYes = true;
+	GameSceneState _stateBeforeDeath = GameSceneState::Playing;	// Continue Yes 선택 시 되돌아갈 상태
 
 	// Stage2 진입 시 텍스처를 교체하기 위해 패럴랙스 배경 두 장을 캐싱해둔다.
 	class Background* _bgLayer1 = nullptr;

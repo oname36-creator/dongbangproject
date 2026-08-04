@@ -5,8 +5,10 @@
 #include "GameScene.h"
 #include "Enemy.h"
 #include "Bullet.h"
+#include "Item.h"
 #include "ColliderCircle.h"
 #include "ResourceManager.h"
+#include "ImageRenderer.h"
 
 void Player::Init()
 {
@@ -63,12 +65,14 @@ void Player::Update(float deltaTime)
 	{
 		move(-_speed * deltaTime, 0);
 	}
-
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::Right))
+	else if (InputManager::GetInstance().GetButtonPressed(KeyType::Right))
 	{
 		move(_speed * deltaTime, 0);
 	}
-
+	else
+	{
+		move(0,0); 
+	}
 	if (InputManager::GetInstance().GetButtonDown(KeyType::F2))
 	{
 		_debugInvincible = !_debugInvincible;
@@ -125,10 +129,17 @@ void Player::OnEnter(Actor* other)
 	}
 	else if (other->GetActorType() == ActorType::Item)
 	{
-		if(_powerLevel < 3)
-			_powerLevel++;
-
-			other->Destroy();
+		Item* item = static_cast<Item*>(other);
+		if(item->GetKind() == ItemKind::Power)
+		{
+			if(_powerLevel < 3 )
+				++_powerLevel;
+		}
+		else if ( item -> GetKind() == ItemKind::Score)
+		{
+			Game::GetInstance().GetScene()->AddScore(500);
+		}
+		other->Destroy();
 	}
 }
 
@@ -137,6 +148,12 @@ void Player::move(float x, float y)
 	Vector newPos = GetPos();
 	newPos.x += x;
 	newPos.y += y;
+	if (x < 0)
+    _renderer->Init(L"Player", 0);      // 왼쪽으로 이동 중
+else if (x > 0)
+    _renderer->Init(L"Player", 2);      // 오른쪽으로 이동 중
+else
+    _renderer->Init(L"Player", 1);      // 좌우 입력 없음
 
 	// 양옆
 	if (newPos.x <= GetWidth())
@@ -169,7 +186,7 @@ void Player::takeDamage()
 	_lives -= 1;
 	if(_powerLevel > 0)
 		--_powerLevel;
-	_invincibleTime = 1.5f;
+	_invincibleTime = 3.3f;
 
 	fs::path hitPath = ResourceManager::GetInstance().GetResourcePath() / L"Hit.wav";
 	::PlaySound(hitPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);

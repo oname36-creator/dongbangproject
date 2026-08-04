@@ -21,6 +21,7 @@
 
 
 #include <random>
+#include <format>
 
 using namespace std;
 random_device rd;
@@ -164,11 +165,20 @@ void GameScene::Cleanup()
 
 void GameScene::Update(float deltaTime)
 {
-	for (auto actor : _actors)
+	if(InputManager::GetInstance().GetButtonDown(KeyType :: PAUSE))
 	{
-		actor->Update(deltaTime);
+		_isPaused = !_isPaused;
 	}
+	if(_isPaused)
+		return;
+	if(_state != GameSceneState::Continue)
+	{
 
+		for (auto actor : _actors)
+		{
+			actor->Update(deltaTime);
+		}
+	}
 	
 	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_1))
 	{
@@ -220,7 +230,7 @@ void GameScene::Update(float deltaTime)
 			}
 			if(_player == nullptr)
 			{
-				_state = GameSceneState :: GameOver; // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
+				onPlayerDead(); // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
 			}
 			else if (_nextWaveIndex >= (int32)std::size(g_waveTable))
 			{
@@ -237,6 +247,10 @@ void GameScene::Update(float deltaTime)
 					_reservedAdd.push_back(boss);
 					_boss = boss;
 					_bossSpawned = true;
+			}
+			else if (_player == nullptr)
+			{
+				onPlayerDead();
 			}
 			else if(_boss == nullptr)
 			{
@@ -258,7 +272,7 @@ void GameScene::Update(float deltaTime)
 			}
 			if(_player == nullptr)
 			{
-				_state = GameSceneState :: GameOver; // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
+				onPlayerDead(); // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
 			}
 			else if (_nextStage2WaveIndex >= (int32)std::size(g_stage2WaveTable))
 			{
@@ -276,6 +290,10 @@ void GameScene::Update(float deltaTime)
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
+			}
+			else if (_player == nullptr)
+			{
+				onPlayerDead();
 			}
 			else if (_boss == nullptr)
 			{
@@ -298,7 +316,7 @@ void GameScene::Update(float deltaTime)
 				}
 				if (_player == nullptr)
 				{
-					_state = GameSceneState :: GameOver;
+					onPlayerDead();
 				}
 				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave1Table))
 				{
@@ -316,7 +334,7 @@ void GameScene::Update(float deltaTime)
 				}
 				if (_player == nullptr)
 				{
-					_state = GameSceneState :: GameOver;
+					onPlayerDead();
 				}
 				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave2Table))
 				{
@@ -333,6 +351,10 @@ void GameScene::Update(float deltaTime)
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
+			}
+			else if (_player == nullptr)
+			{
+				onPlayerDead();
 			}
 			else if (_boss == nullptr)
 			{
@@ -352,6 +374,10 @@ void GameScene::Update(float deltaTime)
 				_boss = boss;
 				_bossSpawned = true;
 			}
+			else if (_player == nullptr)
+			{
+				onPlayerDead();
+			}
 			else if (_boss == nullptr)
 			{
 				_stageElapsedTime = 0.f;
@@ -365,6 +391,35 @@ void GameScene::Update(float deltaTime)
 			if(InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
 			{
 				SceneManager::GetInstance().ChangeScene(new ResultScene(_score));
+			}
+			break;
+		case GameSceneState::Continue:
+			if (InputManager::GetInstance().GetButtonDown(KeyType::Up) ||
+				InputManager::GetInstance().GetButtonDown(KeyType::Down))
+			{
+				_continueSelectYes = !_continueSelectYes;
+			}
+			if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
+			{
+				if (_continueSelectYes)
+				{
+					_continueCount++;
+					
+					// createObjects()의 723~729번 줄과 같은 패턴으로 플레이어 재생성
+					Player* player = new Player();
+					
+					player->Init();
+					player->SetPos(Vector(GWinSizeX * 0.5f, 400));
+					player->SetInvincible(3.3f);
+					_reservedAdd.push_back(player);
+					_player = player;
+
+					_state = _stateBeforeDeath;   // 죽기 전 스테이지 상태로 복귀
+				}
+				else
+				{
+					_state = GameSceneState::GameOver;
+				}
 			}
 			break;
 
@@ -456,6 +511,12 @@ void GameScene::Update(float deltaTime)
 
 void GameScene::Render(HDC hdc)
 {
+
+	if (_isPaused)
+	{
+		wstring msg = L"PAUSED";
+		::TextOut(hdc, GWinSizeX / 2 - 30, GWinSizeY / 2, msg.c_str(), (int32)msg.size());
+	}
 	// 명확한 렌더링 순서를 지키기 위해 별도의 리스트 순서대로 그린다.
 	for (auto list : _renderList)
 	{
@@ -465,10 +526,16 @@ void GameScene::Render(HDC hdc)
 		}
 	}
 
-	//for (auto actor : _actors)
-	//{
-	//	actor->Render(hdc);
-	//}
+	if (_state == GameSceneState::Continue)
+	{
+		wstring msg = L"Continue?";
+		wstring yesText = std::format(L"{0} Yes", _continueSelectYes ? L">" : L" ");
+		wstring noText = std::format(L"{0} No", !_continueSelectYes ? L">" : L" ");
+
+		::TextOut(hdc, GWinSizeX / 2 - 30, GWinSizeY / 2 - 20, msg.c_str(), (int32)msg.size());
+		::TextOut(hdc, GWinSizeX / 2 - 30, GWinSizeY / 2, yesText.c_str(), (int32)yesText.size());
+		::TextOut(hdc, GWinSizeX / 2 - 30, GWinSizeY / 2 + 20, noText.c_str(), (int32)noText.size());
+	}
 }
 
 void GameScene::DeleteActor(Actor* actor)
@@ -482,13 +549,13 @@ void GameScene::DeleteActor(Actor* actor)
 	_reservedRemove.insert(actor);
 }
 
-void GameScene::SpawnItem(Vector pos)
+void GameScene::SpawnItem(Vector pos, ItemKind kind)
 {
 	Item* item = _itemPool.Acquire();
 	if ( item == nullptr)
 		return;
 
-	item->Init(pos);
+	item->Init(pos, kind);
 	_reservedAdd.push_back(item);
 }
 
@@ -748,6 +815,20 @@ void GameScene::registerActor(Actor* actor)
 	if (actor->GetCollider())
 	{
 		CollisionManager::GetInstance().AddActor(actor);
+	}
+}
+
+void GameScene::onPlayerDead()
+{
+	if(_continueCount < MAX_CONTINUE)
+	{
+		_stateBeforeDeath = _state;
+		_continueSelectYes = true;
+		_state = GameSceneState::Continue;
+	}
+	else
+	{
+		_state = GameSceneState::GameOver;
 	}
 }
 

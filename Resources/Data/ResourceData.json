@@ -1,6 +1,6 @@
 {
   "GameScene": {
-    "Player": { "fileName": "Player.bmp", "transparent": [255, 0, 255] },
+    "Player": { "fileName": "Player.bmp", "transparent": [255, 0, 255], "countX": 3, "countY": 1 },
     "Enemy1": { "fileName": "Enemy1.bmp", "transparent": [255, 0, 255] },
     "Enemy2": { "fileName": "Enemy2.bmp", "transparent": [255, 0, 255] },
     "Enemy3": { "fileName": "Enemy3.bmp", "transparent": [255, 0, 255] },
@@ -11,6 +11,7 @@
     "Effect": { "fileName": "explosion.bmp", "transparent": [0, 0, 0], "countX": 6, "countY": 2, "dur": 2.0 },
     "PlayerHP": { "fileName": "PlayerHP.bmp", "transparent": [255, 0, 255] },
     "PowerItem": { "fileName": "PlayerHP.bmp", "transparent": [255, 0, 255] },
+    "ScoreItem": { "fileName": "Enemy1.bmp", "transparent": [255, 0, 255] },
     "World_BG": { "fileName": "World_BG.bmp" },
     "Stage2BG": { "fileName": "Stage2BG.bmp" }
   }

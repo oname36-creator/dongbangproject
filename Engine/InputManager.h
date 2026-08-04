@@ -12,6 +12,8 @@ enum class KeyType
 	LeftMouse = VK_LBUTTON,
 	RightMouse = VK_RBUTTON,
 
+	PAUSE = VK_ESCAPE,
+
 	Up = VK_UP,
 	Down = VK_DOWN,
 	Left = VK_LEFT,

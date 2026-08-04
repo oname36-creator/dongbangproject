@@ -3,14 +3,17 @@
 #include "ImageRenderer.h"
 #include "ColliderCircle.h"
 
-void Item::Init(Vector pos)
+void Item::Init(Vector pos, ItemKind kind)
 {
 	SetPos(pos);
+	_kind = kind;
 	ImageRenderer* renderer = GetComponent<ImageRenderer>();
 	if(renderer == nullptr)
 		renderer = AddComponent<ImageRenderer>();
-	
+	if(ItemKind::Power == kind)
 	renderer->Init(L"PowerItem");
+	else if(ItemKind::Score == kind)
+	renderer->Init(L"ScoreItem");
 
 	// 충돌체가 만들어져있는데, 충돌매니저에서 충돌체크를 실행해야하는 '주체'
 	ColliderCircle* collider = GetComponent<ColliderCircle>();
@@ -32,9 +35,13 @@ void Item::Update(float deltaTime)
 	pos.y += _fallSpeed *deltaTime;
 	SetPos(pos);
 	
+	if ( GetPos().y > GWinSizeY)
+	{
+		Destroy();
+	}
 }
 
 void Item::Render(HDC hdc)
 {
-	Super::Render(hdc);//
+	Super::Render(hdc);
 }
