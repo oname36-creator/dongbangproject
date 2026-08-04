@@ -35,6 +35,7 @@ private:
 
 	bool _debugInvincible = false;
 
+	int32 _powerLevel = 0; 
 	int32 _lives = 3;
 };
 

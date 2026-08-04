@@ -10,6 +10,7 @@
 class Enemy;
 class Bullet;
 class Boss;
+class Item;
 
 // 게임화면에 등장하는 모든 오브젝트를 관리
 class GameScene : public Scene
@@ -60,11 +61,13 @@ public:
 	void FireRandom(Vector pos, BulletType type, int32 count, float speed);
 	void FireHoming(Vector pos, BulletType type, Vector dir, float speed = 500.f, float turnSpeed = 180.f);
 	void FireGrid(Vector origin, BulletType type, Vector dir, int32 raws, int32 cols, float spacingX, float spacingY, float speed);
+	void FireCross(float y, BulletType type, float speed);
 
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
 
 	void SpawnWave(const WaveEntry& wave);
+	void SpawnItem(Vector pos);
 
 	// 좌표계 변환해주는 함수
 	Vector ConvertWorldToScreen(Vector worldPos);
@@ -133,6 +136,7 @@ private:
 	//vector<class Effect>	_effectList;
 	ObjectPool<Bullet> _bulletPool;
 	ObjectPool<Enemy>  _enemyPool;
+	ObjectPool<Item> _itemPool;
 
 	int32 _score = 0;
 	float _stageElapsedTime = 0.f;

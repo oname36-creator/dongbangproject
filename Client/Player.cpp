@@ -77,17 +77,22 @@ void Player::Update(float deltaTime)
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
 	{
+		int32 shotCount = 1 + _powerLevel;
+		float spacing = 10.f;
+		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
 
-		Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Player, Vector(0,-1));
+		for(int32 i = 0; i < shotCount; ++i)
+		{
+			Vector firePos(startX + i * spacing, GetPos().y);
+			Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+		}
 		_fireCooldown = _fireInterval;
 
 		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
 		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
-	}
 
-	// 보조 공격: SpaceBar. 가장 가까운 적을 향해 유도탄을 쏜다.
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::SpaceBar) && _subFireCooldown <= 0.f)
-	{
+		if(_subFireCooldown <= 0.f && _powerLevel >= 1)
+		{
 		Vector dir(0, -1);
 		Actor* target = Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
 		if (target != nullptr)
@@ -98,8 +103,10 @@ void Player::Update(float deltaTime)
 
 		Game::GetInstance().GetScene()->FireHoming(GetPos(), BulletType::Player, dir, 400.f, 240.f);
 		_subFireCooldown = _subFireInterval;
-	}
+		}
+		
 
+	}
 	// 적비행기 가지고와서 충돌체크 수행?
 }
 
@@ -115,6 +122,13 @@ void Player::OnEnter(Actor* other)
 		other->GetActorType() == ActorType::EnemyBullet)
 	{
 		takeDamage();
+	}
+	else if (other->GetActorType() == ActorType::Item)
+	{
+		if(_powerLevel < 3)
+			_powerLevel++;
+
+			other->Destroy();
 	}
 }
 
@@ -153,6 +167,8 @@ void Player::takeDamage()
 	return;
 
 	_lives -= 1;
+	if(_powerLevel > 0)
+		--_powerLevel;
 	_invincibleTime = 1.5f;
 
 	fs::path hitPath = ResourceManager::GetInstance().GetResourcePath() / L"Hit.wav";

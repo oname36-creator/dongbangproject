@@ -7,6 +7,10 @@
 #include "TimeManager.h"
 #include "colliderCircle.h"
 #include "ResourceManager.h"
+#include <random>
+
+static random_device rd;
+static mt19937 gen(rd());
 
 void Enemy::Init(Vector pos, wstring key)
 {
@@ -55,6 +59,7 @@ void Enemy::Destroy()
 {
 	Super::Destroy();
 
+
 	// 삭제예정이니, 타이머도 같이 삭제해주자.
 	TimeManager::GetInstance().Remove(_shootTimerId);
 }
@@ -88,6 +93,7 @@ void Enemy::Render(HDC hdc)
 
 void Enemy::OnEnter(Actor* other) // other : Player
 {
+	
 	// 무언가와 '처음으로' 충돌되었다.
 	// '누구'와 정확하게 충돌되었는지 판단하자.
 	// 1번 방식
@@ -118,6 +124,14 @@ void Enemy::OnEnter(Actor* other) // other : Player
 
 			// 점수 증가
 			Game::GetInstance().GetScene()->AddScore(100);
+
+			uniform_int_distribution<int> randitem(1,10);
+			int32 randnum = randitem (gen);
+
+			if(randnum < 3)
+			{
+				Game::GetInstance().GetScene()->SpawnItem(GetPos());
+			}
 			}
 			// 파티클 재생
 		

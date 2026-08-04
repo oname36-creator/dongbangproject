@@ -9,7 +9,8 @@ enum class BossPatternType
 	Spiral,
 	AimedBurst,	// 조준 라인탄(연사): 방향을 한 번만 고정하고, 그 방향으로 짧은 간격 연사해서 실시간으로 줄이 생기게
 	Telegraph,	// 예고 판정: 경고 표시 -> 지연 -> 원형탄 발동
-	Grid
+	Grid,
+	Cross
 };
 struct TimelineStep
 {
@@ -52,6 +53,7 @@ private:
 	void shootSpiralBullet();
 	void shootTelegraphBullet();
 	void shootAimedBurst();
+	
 private:
 	int32 _hp = 0;
 	int32 _maxHp = 100;

@@ -7,6 +7,7 @@
 #include "ResourceManager.h"
 #include "TimeManager.h"
 #include "Bullet.h"
+#include "Item.h"
 #include "CollisionManager.h"
 #include "Effect.h"
 #include "DataManager.h"
@@ -17,6 +18,7 @@
 #include "ResultScene.h"
 #include "EndingScene.h"
 #include "SceneManager.h"
+
 
 #include <random>
 
@@ -101,7 +103,7 @@ static const vector<BossPhase> g_stage3BossPhases =
 	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 150 },
 	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 100 },
 	{ { { 0.f, BossPatternType::Telegraph } }, 2.5f, 50 },
-	{ { { 0.f, BossPatternType::Spiral } }, 1.0f, 0 },
+	{ { { 0.f, BossPatternType::Spiral }, { 0.f, BossPatternType::Cross } }, 1.0f, 0 },
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
@@ -126,6 +128,7 @@ void GameScene::Init()
 	// 객체생성전에 미리 풀을 생성해둔다. (2주차 원형/나선탄 대비 1000개로 상향)
 	_bulletPool.Init(1000);
 	_enemyPool.Init(1000);
+	_itemPool.Init(100);
 
 	// Scene에 필요한 객체 생성
 	createObjects();
@@ -189,6 +192,19 @@ void GameScene::Update(float deltaTime)
 		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
 		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
 	}
+	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_3))
+	{
+		if (_boss) _boss->Destroy();
+		_bossSpawned = false;
+		_boss = nullptr;
+		_state = GameSceneState::Stage3;
+		_stageElapsedTime = 0.f;
+		_nextStage3WaveIndex = 0;
+		_stage3Wave2 = false;
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
+	}
+
 
 	switch(_state)
 	{
@@ -466,6 +482,15 @@ void GameScene::DeleteActor(Actor* actor)
 	_reservedRemove.insert(actor);
 }
 
+void GameScene::SpawnItem(Vector pos)
+{
+	Item* item = _itemPool.Acquire();
+	if ( item == nullptr)
+		return;
+
+	item->Init(pos);
+	_reservedAdd.push_back(item);
+}
 
 void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed)
 {
@@ -588,6 +613,20 @@ void GameScene::FireGrid(Vector origin, BulletType type, Vector dir, int32 raws,
 		}
 	}
 	
+}
+
+void GameScene::FireCross(float y, BulletType type, float speed)
+{
+		Vector leftPos(0.f, y);
+		Vector rightPos((float)GWinSizeX,y);
+
+		Vector leftDir(1.f, 1.f);
+		leftDir.Normalize();
+		Vector rightDir(-1.f,1.f);
+		rightDir.Normalize();
+
+		CreateBullet(leftPos, type, leftDir, speed);
+		CreateBullet(rightPos, type, rightDir, speed);
 }
 
 void GameScene::CreateEffect(Vector pos)

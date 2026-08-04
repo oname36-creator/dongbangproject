@@ -177,6 +177,9 @@ void Boss::shootBullet(BossPatternType pattern)
 		case BossPatternType::Spiral :
 			// Update()에서 이미 걸러내고 연속 타이머(_spiralShootTimerId)로 처리하므로 여기선 아무것도 안 함.
 			break;
+		case BossPatternType::Cross :
+			Game::GetInstance().GetScene()->FireCross(GetPos().y, BulletType::Enemy, 300.f);
+			break;
 	}
 }
 
@@ -214,3 +217,5 @@ void Boss::shootTelegraphBullet()
 		Game::GetInstance().GetScene()->FireCircle(warnPos, BulletType::Enemy, 10, 250.f);
 	}, 1.8f, false);
 }
+
+

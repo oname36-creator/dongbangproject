@@ -36,11 +36,3 @@ private:
 	bool _isHoming = false;
 	float _turnSpeed = 180.f;
 };
-
-// 나중에 아이템이 추가되어도 크게 코드를 수정해야할 일이 없다.
-class Item : public Actor
-{
-private:
-	class Texture* _texture = nullptr;
-	class ColliderCircle* _collider = nullptr;
-};
