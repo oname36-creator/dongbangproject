@@ -616,13 +616,13 @@ void GameScene::DeleteActor(Actor* actor)
 	_reservedRemove.insert(actor);
 }
 
-void GameScene::SpawnItem(Vector pos, ItemKind kind, int32 powerValue, bool burst)
+void GameScene::SpawnItem(Vector pos, ItemKind kind, int32 powerValue, bool burst, bool autoCollect)
 {
 	Item* item = _itemPool.Acquire();
 	if ( item == nullptr)
 		return;
 
-	item->Init(pos, kind, powerValue, burst);
+	item->Init(pos, kind, powerValue, burst, autoCollect);
 	_reservedAdd.push_back(item);
 }
 
@@ -781,6 +781,27 @@ void GameScene::ClearEnemyBullets()
 		{
 			actor->Destroy();
 		}
+	}
+}
+
+void GameScene::BombClearBullets()
+{
+	// vector 스냅샷: SpawnItem이 _reservedAdd에 넣는 동안 _renderList[Bullet]을
+	// 직접 순회하고 있으면 안 되므로, 위치만 먼저 복사해둔다.
+	vector<Vector> bulletPositions;
+	const vector<Actor*>& bullets = GetRenderList(RenderLayer::Bullet);
+	for (Actor* actor : bullets)
+	{
+		if (actor->GetActorType() == ActorType::EnemyBullet)
+		{
+			bulletPositions.push_back(actor->GetPos());
+			actor->Destroy();
+		}
+	}
+
+	for (const Vector& pos : bulletPositions)
+	{
+		SpawnItem(pos, ItemKind::Score, 1, false, true);
 	}
 }
 

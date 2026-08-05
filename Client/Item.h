@@ -10,7 +10,7 @@ class Item : public Actor
 {
 	using Super = Actor;
 public:
-	void Init(Vector pos, ItemKind kind, int32 powerValue = 1, bool burst = false);
+	void Init(Vector pos, ItemKind kind, int32 powerValue = 1, bool burst = false, bool autoCollect = false);
 	ItemKind GetKind() const { return _kind; };
 	int32 GetPowerValue() const { return _powerValue; }
 	virtual void Update(float deltaTime) override;
@@ -31,4 +31,8 @@ private:
 	float _velocityX = 0.f;
 	float _velocityY = 0.f;
 	float _gravity = 600.f;
+
+	// 폭탄 사용 시 탄환 -> 점수 아이템 전환용: 낙하 대신 플레이어를 향해 자동으로 날아간다.
+	bool _autoCollect = false;
+	float _collectSpeed = 500.f;
 };

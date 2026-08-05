@@ -2,16 +2,20 @@
 #include "Item.h"
 #include "ImageRenderer.h"
 #include "ColliderCircle.h"
+#include "Game.h"
+#include "GameScene.h"
+#include "Player.h"
 #include <random>
 
 static random_device rd;
 static mt19937 gen(rd());
 
-void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst)
+void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst, bool autoCollect)
 {
 	SetPos(pos);
 	_kind = kind;
 	_powerValue = powerValue;
+	_autoCollect = autoCollect;
 
 	if (burst)
 	{
@@ -31,7 +35,7 @@ void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst)
 	if(renderer == nullptr)
 		renderer = AddComponent<ImageRenderer>();
 	if(ItemKind::Power == kind)
-	renderer->Init(L"PowerItem");
+	renderer->Init(powerValue >= 8 ? L"BigPowerItem" : L"PowerItem");
 	else if(ItemKind::Score == kind)
 	renderer->Init(L"ScoreItem");
 
@@ -50,6 +54,22 @@ void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst)
 void Item::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
+
+	if (_autoCollect)
+	{
+		Player* player = Game::GetInstance().GetScene()->GetPlayer();
+		if (player != nullptr)
+		{
+			Vector dir = player->GetPos() - GetPos();
+			dir.Normalize();
+
+			Vector pos = GetPos();
+			pos.x += dir.x * _collectSpeed * deltaTime;
+			pos.y += dir.y * _collectSpeed * deltaTime;
+			SetPos(pos);
+		}
+		return;
+	}
 
 	// 중력: _velocityY가 위(음수)에서 시작해도 서서히 _fallSpeed(느린 하강)까지만 가속된다.
 	_velocityY += _gravity * deltaTime;

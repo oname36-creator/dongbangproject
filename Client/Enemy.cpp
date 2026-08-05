@@ -16,6 +16,7 @@ static mt19937 gen(rd());
 void Enemy::Init(Vector pos, wstring key)
 {
 	SetPos(pos);
+	_isDead = false;
 	loadTexture(key);
 
 	// 주기적으로 총알 발사하는 Timer

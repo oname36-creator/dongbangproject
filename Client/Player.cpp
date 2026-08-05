@@ -52,11 +52,11 @@ void Player::Update(float deltaTime)
 		subSpacing = 0.f;
 
 	}
-	else subSpacing = 15.f;
+	else subSpacing = 30.f;
 	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM))
 	{
 		_boom -= 1;
-		Game::GetInstance().GetScene()->ClearEnemyBullets();
+		Game::GetInstance().GetScene()->BombClearBullets();
 	}
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::Up))
 	{
@@ -96,8 +96,16 @@ void Player::Update(float deltaTime)
 
 void Player::Render(HDC hdc)
 {
+	if (_invincibleTime > 0.f)
+	{
+		int32 blinkPhase = (int32)(_invincibleTime * 20.f) % 2;
+		if (blinkPhase == 0)
+			return;   // 이번 프레임은 그리지 않음 -> 깜빡임
+	}
+
 	Super::Render(hdc);
 }
+
 
 void Player::OnEnter(Actor* other)
 {

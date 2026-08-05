@@ -67,9 +67,10 @@ public:
 
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
+	void BombClearBullets();	// 폭탄 전용: 적 탄환을 점수 아이템으로 바꿔서 플레이어에게 자동 회수시킨다
 
 	void SpawnWave(const WaveEntry& wave);
-	void SpawnItem(Vector pos, ItemKind kind, int32 powerValue = 1, bool burst = false);
+	void SpawnItem(Vector pos, ItemKind kind, int32 powerValue = 1, bool burst = false, bool autoCollect = false);
 
 	// 좌표계 변환해주는 함수
 	Vector ConvertWorldToScreen(Vector worldPos);
