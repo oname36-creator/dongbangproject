@@ -9,6 +9,10 @@
 #include "ColliderCircle.h"
 #include "ResourceManager.h"
 #include "ImageRenderer.h"
+#include <random>
+
+static random_device rd;
+static mt19937 gen(rd());
 
 void Player::Init()
 {
@@ -45,7 +49,10 @@ void Player::Update(float deltaTime)
 	if(InputManager::GetInstance().GetButtonPressed(KeyType::LOW_SPEED))
 	{
 		_speed *= 0.5f;
+		subSpacing = 0.f;
+
 	}
+	else subSpacing = 15.f;
 	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM))
 	{
 		_boom -= 1;
@@ -81,35 +88,8 @@ void Player::Update(float deltaTime)
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
 	{
-		int32 shotCount = 1 + _powerLevel;
-		float spacing = 10.f;
-		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
-
-		for(int32 i = 0; i < shotCount; ++i)
-		{
-			Vector firePos(startX + i * spacing, GetPos().y);
-			Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
-		}
-		_fireCooldown = _fireInterval;
-
-		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
-		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
-
-		if(_subFireCooldown <= 0.f && _powerLevel >= 1)
-		{
-		Vector dir(0, -1);
-		Actor* target = Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
-		if (target != nullptr)
-		{
-			dir = target->GetPos() - GetPos();
-			dir.Normalize();
-		}
-
-		Game::GetInstance().GetScene()->FireHoming(GetPos(), BulletType::Player, dir, 400.f, 240.f);
-		_subFireCooldown = _subFireInterval;
-		}
-		
-
+		_powerLevel = getPowerStage();
+		attack();
 	}
 	// 적비행기 가지고와서 충돌체크 수행?
 }
@@ -132,8 +112,8 @@ void Player::OnEnter(Actor* other)
 		Item* item = static_cast<Item*>(other);
 		if(item->GetKind() == ItemKind::Power)
 		{
-			if(_powerLevel < 3 )
-				++_powerLevel;
+			if(_powerStack < 128 )
+				_powerStack += item->GetPowerValue();
 		}
 		else if ( item -> GetKind() == ItemKind::Score)
 		{
@@ -179,14 +159,46 @@ else
 }
 
 void Player::takeDamage()
-{
+{	
+	Vector hitPos = GetPos();
+	int32 _powerdrop =0;
 	if(_invincibleTime > 0.f || _debugInvincible == true)
 	return;
 
 	_lives -= 1;
-	if(_powerLevel > 0)
-		--_powerLevel;
+	if(_powerStack > 0)
+	{
+		if(_powerStack < 15)
+		_powerdrop =_powerStack;
+		else
+		_powerdrop = 15;
+
+		_powerStack -=15 ;
+		if(_powerStack < 0)
+			_powerStack = 0;
+	}
 	_invincibleTime = 3.3f;
+
+	
+	if(_powerdrop >=8)
+{
+	Game::GetInstance().GetScene()->SpawnItem(hitPos, ItemKind::Power, 8, true);
+	for(int32 i = 0; i < (_powerdrop-8); ++i)
+	{
+		Game::GetInstance().GetScene()->SpawnItem(hitPos, ItemKind::Power, 1, true);
+	}
+}
+else
+{
+	for(int32 i = 0; i < _powerdrop; ++i)
+	{
+		Game::GetInstance().GetScene()->SpawnItem(hitPos, ItemKind::Power, 1, true);
+	}
+}
+
+	SetPos(Vector(GWinSizeX * 0.5f, 400.f));
+
+
 
 	fs::path hitPath = ResourceManager::GetInstance().GetResourcePath() / L"Hit.wav";
 	::PlaySound(hitPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
@@ -201,3 +213,67 @@ void Player::takeDamage()
 	}
 }
 
+void Player::attack()
+{
+		int32 shotCount = 1 + _powerLevel;
+		float spacing = 10.f;
+		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
+
+		for(int32 i = 0; i < shotCount; ++i)
+		{
+			Vector firePos(startX + i * spacing, GetPos().y);
+			Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+		}
+		_fireCooldown = _fireInterval;
+
+		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
+		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+
+		if(_subFireCooldown <= 0.f && _powerLevel >= 1)
+		{
+		Vector dir(0, -1);
+		Actor* target = Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
+		if (target != nullptr)
+		{
+			dir = target->GetPos() - GetPos();
+			dir.Normalize();
+		}
+		Vector pos1 = GetPos();
+		Vector pos2 = GetPos();
+
+		pos1.x -= subSpacing;
+    	pos2.x += subSpacing;
+
+		Game::GetInstance().GetScene()->FireHoming(pos1, BulletType::Player, dir, 400.f, 240.f);
+		Game::GetInstance().GetScene()->FireHoming(pos2, BulletType::Player, dir, 400.f, 240.f);
+
+		_subFireCooldown = _subFireInterval - (_powerLevel - 1) * 0.05f;
+		if(_subFireCooldown < 0.1f)
+			_subFireCooldown = 0.1f;
+
+		
+		}
+}
+
+int32 Player::getPowerStage() const
+{
+	
+	if(_powerStack < 8)
+		return 0;
+	else if(_powerStack >= 8 && _powerStack < 16)
+		return 1;
+	else if(_powerStack >= 16 && _powerStack < 32)
+		return 2;
+	else if(_powerStack >= 32 && _powerStack < 48)
+		return 3;
+	else if(_powerStack >= 48 && _powerStack < 64)
+		return 4;
+	else if(_powerStack >= 64 && _powerStack < 80)
+		return 5;
+	else if(_powerStack >= 80 && _powerStack < 96)
+		return 6;
+	else if(_powerStack >= 96 && _powerStack < 128)
+		return 7;
+	else
+		return 8;
+}

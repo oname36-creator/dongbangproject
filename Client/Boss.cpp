@@ -50,7 +50,10 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp)
 
 void Boss::Destroy()
 {
+	
 	Super::Destroy();
+
+	_isDead = true;
 	TimeManager::GetInstance().Remove(_moveTimerId);
 	TimeManager::GetInstance().Remove(_spiralShootTimerId);
 	TimeManager::GetInstance().Remove(_telegraphTimerId);
@@ -185,14 +188,28 @@ void Boss::shootBullet(BossPatternType pattern)
 
 void Boss::shootSpiralBullet()
 {
-Game::GetInstance().GetScene()->FireSpiral(GetPos(), BulletType::Enemy, 2, 300.f, _spiralAngle, 10.f );
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	scene->FireSpiral(GetPos(), BulletType::Enemy, 2, 300.f, _spiralAngle, 10.f);
 }
 
 void Boss::shootAimedBurst()
 {
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
 	// 고정해둔 방향으로 한 발씩 연사. 총알들이 시간차를 두고 같은 경로를 따라가면서
 	// 실시간으로 이어진 줄처럼 보인다.
-	Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Enemy, _burstDir, 300.f);
+	scene->FireStraight(GetPos(), BulletType::Enemy, _burstDir, 300.f);
 
 	_burstShotsRemaining--;
 	if (_burstShotsRemaining <= 0)
@@ -214,7 +231,13 @@ void Boss::shootTelegraphBullet()
 
 	_telegraphTimerId = TimeManager::GetInstance().AddTimer([warnPos]()
 	{
-		Game::GetInstance().GetScene()->FireCircle(warnPos, BulletType::Enemy, 10, 250.f);
+		// this를 캡처하지 않는다: Boss는 풀이 아니라 new/delete로 관리되므로,
+		// 이 타이머가 delete된 Boss를 가리키는 채로 남아있을 수 있다 (use-after-free 방지).
+		GameScene* scene = Game::GetInstance().GetScene();
+		if (scene == nullptr)
+			return;
+
+		scene->FireCircle(warnPos, BulletType::Enemy, 10, 250.f);
 	}, 1.8f, false);
 }
 

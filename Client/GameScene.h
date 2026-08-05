@@ -69,7 +69,7 @@ public:
 	void ClearEnemyBullets();
 
 	void SpawnWave(const WaveEntry& wave);
-	void SpawnItem(Vector pos, ItemKind kind);
+	void SpawnItem(Vector pos, ItemKind kind, int32 powerValue = 1, bool burst = false);
 
 	// 좌표계 변환해주는 함수
 	Vector ConvertWorldToScreen(Vector worldPos);
@@ -143,6 +143,16 @@ private:
 	ObjectPool<Item> _itemPool;
 
 	bool _isPaused = false;
+
+	// 일시정지 메뉴: Resume/Quit Game 선택 -> Quit 선택 시 Really? Yes/No 재확인
+	enum class PauseState
+	{
+		Menu,
+		QuitConfirm
+	};
+	PauseState _pauseState = PauseState::Menu;
+	int32 _pauseMenuSelect = 0;			// 0 = Resume, 1 = Quit Game
+	bool _quitConfirmSelectYes = false;	// 기본값 No (실수로 종료 방지)
 
 	int32 _score = 0;
 	float _stageElapsedTime = 0.f;

@@ -60,7 +60,7 @@ void Enemy::Destroy()
 {
 	Super::Destroy();
 
-
+	_isDead = true;
 	// 삭제예정이니, 타이머도 같이 삭제해주자.
 	TimeManager::GetInstance().Remove(_shootTimerId);
 }
@@ -129,18 +129,17 @@ void Enemy::OnEnter(Actor* other) // other : Player
 			uniform_int_distribution<int> randitem(1,10);
 			int32 randnum = randitem (gen);
 
-			if(randnum < 3)
+			if(randnum <= 4)
 			{
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power );
 			}
-			uniform_int_distribution<int> randscore(1,10);
-			randnum = randscore (gen);
 
-			if(randnum < 3)
+			else if(randnum > 4 && randnum <= 8 )
 			{
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Score );
 			}
-
+			else if(randnum == 9)
+				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power , 8);
 			}
 			// 파티클 재생
 		
@@ -150,26 +149,33 @@ void Enemy::OnEnter(Actor* other) // other : Player
 
 void Enemy::shootBullet()
 {
+	if(_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
 	switch(_type)
 	{
-		case EnemyType::Circle : 
-			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy, 4, 300.f);
+		case EnemyType::Circle :
+			scene->FireCircle(GetPos(), BulletType::Enemy, 4, 300.f);
 			break;
-		case EnemyType::Fan : 
-			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f, 4, 300.f);
+		case EnemyType::Fan :
+			scene->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f, 4, 300.f);
 			break;
 		case EnemyType::Aimed :
 		{
-			Player* player = Game::GetInstance().GetScene()->GetPlayer();
+			Player* player = scene->GetPlayer();
 			if (player != nullptr)
 			{
-				Game::GetInstance().GetScene()->FireAimed(GetPos(), BulletType::Enemy, player->GetPos(), 300.f);
+				scene->FireAimed(GetPos(), BulletType::Enemy, player->GetPos(), 300.f);
 			}
-		
+
 			break;
 		}
 		case EnemyType::Zigzag :
-			Game::GetInstance().GetScene()->FireStraight(GetPos(), BulletType::Enemy, Vector(0, 1));
+			scene->FireStraight(GetPos(), BulletType::Enemy, Vector(0, 1));
 			break;
 	}
 }

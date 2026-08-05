@@ -18,7 +18,8 @@ public:
 private:
 	void move(float x, float y);
 	void takeDamage();
-
+	void attack();
+	int32 getPowerStage() const;
 private:
 	int32 _attack = 1;	// 공격력
 	float _moveSpeed = 300.f;
@@ -37,7 +38,9 @@ private:
 	bool _debugInvincible = false;
 
 	int32 _powerLevel = 0; 
+	int32 _powerStack = 0;
 	int32 _lives = 3;
+	float subSpacing = 0.f;
 };
 
 

@@ -38,6 +38,7 @@ public:
 	// 타이머
 	int32 AddTimer(TimerFunc func, float interval, bool loop = false);
 	void Remove(int32 id);
+	void Clear();
 
 
 private:

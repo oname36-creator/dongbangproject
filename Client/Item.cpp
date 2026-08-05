@@ -2,11 +2,31 @@
 #include "Item.h"
 #include "ImageRenderer.h"
 #include "ColliderCircle.h"
+#include <random>
 
-void Item::Init(Vector pos, ItemKind kind)
+static random_device rd;
+static mt19937 gen(rd());
+
+void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst)
 {
 	SetPos(pos);
 	_kind = kind;
+	_powerValue = powerValue;
+
+	if (burst)
+	{
+		// 위로 발사됐다가 중력에 의해 서서히 느려지고, 다시 천천히 떨어진다.
+		uniform_int_distribution<int> vxDist(-150, 150);
+		uniform_int_distribution<int> vyDist(-550, -350);
+		_velocityX = (float)vxDist(gen);
+		_velocityY = (float)vyDist(gen);
+	}
+	else
+	{
+		_velocityX = 0.f;
+		_velocityY = 0.f;
+	}
+
 	ImageRenderer* renderer = GetComponent<ImageRenderer>();
 	if(renderer == nullptr)
 		renderer = AddComponent<ImageRenderer>();
@@ -31,10 +51,16 @@ void Item::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
 
+	// 중력: _velocityY가 위(음수)에서 시작해도 서서히 _fallSpeed(느린 하강)까지만 가속된다.
+	_velocityY += _gravity * deltaTime;
+	if (_velocityY > _fallSpeed)
+		_velocityY = _fallSpeed;
+
 	Vector pos = GetPos();
-	pos.y += _fallSpeed *deltaTime;
+	pos.x += _velocityX * deltaTime;
+	pos.y += _velocityY * deltaTime;
 	SetPos(pos);
-	
+
 	if ( GetPos().y > GWinSizeY)
 	{
 		Destroy();

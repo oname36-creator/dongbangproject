@@ -76,4 +76,6 @@ private:
 	Vector _moveTargetPos;
 	int32 _moveTimerId = -1;
 	float _moveSpeed = 100.f;
+
+	bool _isDead = false;
 };

@@ -17,6 +17,7 @@
 #include "InputManager.h"
 #include "ResultScene.h"
 #include "EndingScene.h"
+#include "TitleScene.h"
 #include "SceneManager.h"
 
 
@@ -152,6 +153,7 @@ void GameScene::Cleanup()
 		// CollisionManager는 싱글톤이라 씬이 바뀌어도 살아남는다. 여기서 등록 해제를
 		// 안 하면, 곧 delete되거나(풀 소멸 시) 메모리가 풀릴 액터 포인터가
 		// _collisionCheckList/_prev/_curr에 죽은 채로 남아 다음 GameScene에서 크래시난다.
+		iter->Destroy();
 		removeActor(iter);
 
 		// Scene이 new 한 객체는 delete 해도 된다.
@@ -161,25 +163,72 @@ void GameScene::Cleanup()
 		}
 	}
 	_actors.clear();
+
+	TimeManager::GetInstance().Clear();
 }
 
 void GameScene::Update(float deltaTime)
 {
-	if(InputManager::GetInstance().GetButtonDown(KeyType :: PAUSE))
-	{
-		_isPaused = !_isPaused;
-	}
-	if(_isPaused)
-		return;
-	if(_state != GameSceneState::Continue)
-	{
+	if(InputManager::GetInstance().GetButtonDown(KeyType::PAUSE))
+{
+    _isPaused = !_isPaused;
+    if (!_isPaused)
+        _pauseState = PauseState::Menu;   // 다음에 다시 열 때는 항상 메인 메뉴부터
+}
 
+if(_isPaused)
+{
+    if (_pauseState == PauseState::Menu)
+    {
+        if (InputManager::GetInstance().GetButtonDown(KeyType::Up) ||
+            InputManager::GetInstance().GetButtonDown(KeyType::Down))
+        {
+            _pauseMenuSelect = 1 - _pauseMenuSelect;   // 0<->1 토글
+        }
+        if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
+        {
+            if (_pauseMenuSelect == 0)   // Resume
+            {
+                _isPaused = false;
+                _pauseState = PauseState::Menu;
+            }
+            else   // Quit Game
+            {
+                _pauseState = PauseState::QuitConfirm;
+                _quitConfirmSelectYes = false;
+            }
+        }
+    }
+    else if (_pauseState == PauseState::QuitConfirm)
+    {
+        if (InputManager::GetInstance().GetButtonDown(KeyType::Up) ||
+            InputManager::GetInstance().GetButtonDown(KeyType::Down))
+        {
+            _quitConfirmSelectYes = !_quitConfirmSelectYes;
+        }
+        if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
+        {
+            if (_quitConfirmSelectYes)
+            {
+                SceneManager::GetInstance().ChangeScene(new TitleScene());
+            }
+            else
+            {
+                _pauseState = PauseState::Menu;   // 다시 일시정지 메뉴로
+            }
+        }
+    }
+    return;
+}
+
+	if (_state != GameSceneState::Continue)
+	{
 		for (auto actor : _actors)
 		{
 			actor->Update(deltaTime);
 		}
 	}
-	
+
 	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_1))
 	{
 		if (_boss) _boss->Destroy();
@@ -511,13 +560,6 @@ void GameScene::Update(float deltaTime)
 
 void GameScene::Render(HDC hdc)
 {
-
-	if (_isPaused)
-	{
-		wstring msg = L"PAUSED";
-		::TextOut(hdc, GWinSizeX / 2 - 30, GWinSizeY / 2, msg.c_str(), (int32)msg.size());
-	}
-	// 명확한 렌더링 순서를 지키기 위해 별도의 리스트 순서대로 그린다.
 	for (auto list : _renderList)
 	{
 		for (auto actor : list)
@@ -525,6 +567,31 @@ void GameScene::Render(HDC hdc)
 			actor->Render(hdc);
 		}
 	}
+
+	if (_isPaused)
+{
+    if (_pauseState == PauseState::Menu)
+    {
+        wstring msg = L"PAUSED";
+        wstring resumeText = std::format(L"{0} Resume", _pauseMenuSelect == 0 ? L">" : L" ");
+        wstring quitText = std::format(L"{0} Quit Game", _pauseMenuSelect == 1 ? L">" : L" ");
+
+        ::TextOut(hdc, GWinSizeX/2 - 40, GWinSizeY/2 - 30, msg.c_str(), (int32)msg.size());
+        ::TextOut(hdc, GWinSizeX/2 - 40, GWinSizeY/2, resumeText.c_str(), (int32)resumeText.size());
+        ::TextOut(hdc, GWinSizeX/2 - 40, GWinSizeY/2 + 20, quitText.c_str(), (int32)quitText.size());
+    }
+    else if (_pauseState == PauseState::QuitConfirm)
+    {
+        wstring msg = L"Really?";
+        wstring yesText = std::format(L"{0} Yes", _quitConfirmSelectYes ? L">" : L" ");
+        wstring noText = std::format(L"{0} No", !_quitConfirmSelectYes ? L">" : L" ");
+
+        ::TextOut(hdc, GWinSizeX/2 - 30, GWinSizeY/2 - 30, msg.c_str(), (int32)msg.size());
+        ::TextOut(hdc, GWinSizeX/2 - 30, GWinSizeY/2, yesText.c_str(), (int32)yesText.size());
+        ::TextOut(hdc, GWinSizeX/2 - 30, GWinSizeY/2 + 20, noText.c_str(), (int32)noText.size());
+    }
+}
+
 
 	if (_state == GameSceneState::Continue)
 	{
@@ -549,13 +616,13 @@ void GameScene::DeleteActor(Actor* actor)
 	_reservedRemove.insert(actor);
 }
 
-void GameScene::SpawnItem(Vector pos, ItemKind kind)
+void GameScene::SpawnItem(Vector pos, ItemKind kind, int32 powerValue, bool burst)
 {
 	Item* item = _itemPool.Acquire();
 	if ( item == nullptr)
 		return;
 
-	item->Init(pos, kind);
+	item->Init(pos, kind, powerValue, burst);
 	_reservedAdd.push_back(item);
 }
 

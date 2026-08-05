@@ -38,6 +38,8 @@ private:
 	float _sumRadian = 0;
 	float _turnSpeed = 2;
 
+	bool _isDead = false;
+
 	// 주기적으로 총알 발사하는 Timer
 	int32 _shootTimerId = -1;
 };

@@ -35,7 +35,10 @@ void TimeManager::Update()
 	// 타이머 호출
 	for (auto& iter : _timers)
 	{
+		if(_removeTimers.find(iter.GetId()) != _removeTimers.end())
+		continue;
 		iter.Update(_deltaTime);
+		
 	}
 
 	// 제거 리스트
@@ -100,4 +103,11 @@ bool Timer::IsExpired() const
 {
 	// 타이머의 누적시간이 알람 울려야하는 시간보다 넘어섯다면 만료된것
 	return (_sumTime >= _interval);
+}
+
+void TimeManager::Clear()
+{
+	_timers.clear();
+	_addTimers.clear();
+	_removeTimers.clear();
 }

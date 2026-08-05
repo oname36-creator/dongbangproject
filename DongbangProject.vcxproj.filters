@@ -7,6 +7,9 @@
     <Filter Include="Client">
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Client\Actors">
+      <UniqueIdentifier>{a1b2c3d4-1111-4b04-88EB-625FBE52EBFC}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Common">
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
     </Filter>
@@ -62,31 +65,31 @@
       <Filter>Engine</Filter>
     </ClInclude>
     <ClInclude Include="Client\Airplane.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Background.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Bullet.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Effect.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Boss.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Enemy.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Item.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Game.h">
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="Client\Player.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\ResourceData.h">
       <Filter>Client</Filter>
@@ -101,7 +104,7 @@
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="Client\WorldBG.h">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\TitleScene.h">
       <Filter>Client</Filter>
@@ -175,31 +178,31 @@
       <Filter>Engine</Filter>
     </ClCompile>
     <ClCompile Include="Client\Airplane.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Background.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Bullet.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Effect.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Boss.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Item.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Game.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\Player.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\ResourceData.cpp">
       <Filter>Client</Filter>
@@ -214,7 +217,7 @@
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\WorldBG.cpp">
-      <Filter>Client</Filter>
+      <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\TitleScene.cpp">
       <Filter>Client</Filter>
