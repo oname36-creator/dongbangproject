@@ -4,13 +4,14 @@
 #include "Texture.h"
 #include "ImageRenderer.h"
 
-void Background::Init(std::wstring texturKey, float moveSpeed)
+void Background::Init(std::wstring texturKey, float moveSpeed, float moveSpeedX)
 {
 	//_renderer = new ImageRenderer();
 	ImageRenderer* renderer = AddComponent<ImageRenderer>();
 	renderer->Init(texturKey);
 	renderer->SetApplyCenter(false);
 	_moveSpeed = moveSpeed;
+	_moveSpeedX = moveSpeedX;
 	// 미리 캐싱해둔다.
 	_renderer = renderer;
 
@@ -19,11 +20,13 @@ void Background::Init(std::wstring texturKey, float moveSpeed)
 
 	// 텍스쳐의 크기를 가져와서 1,2번의 순환할 길이를 계산한다.
 	_textureHeight = renderer->GetSizeY();
+	_textureWidth = renderer->GetSizeX();
 	_pos2 = Vector( 0, -(float)_textureHeight);
+	_scrollX = 0.f;
 
 }
 
-void Background::ChangeTexture(std::wstring textureKey)
+void Background::ChangeTexture(std::wstring textureKey, float moveSpeedX, float moveSpeed)
 {
 	if (_renderer == nullptr)
 		return;
@@ -34,8 +37,14 @@ void Background::ChangeTexture(std::wstring textureKey)
 	// (Background는 좌상단 기준으로 그려야 하므로) 여기서 다시 꺼줘야 한다.
 	_renderer->SetApplyCenter(false);
 	_textureHeight = _renderer->GetSizeY();
+	_textureWidth = _renderer->GetSizeX();
+	_moveSpeedX = moveSpeedX;
+	// moveSpeed를 -1(기본값)로 넘기면 세로 속도는 기존 값 유지, 그 외엔 새 값으로 교체
+	if (moveSpeed >= 0.f)
+		_moveSpeed = moveSpeed;
 	SetPos(Vector(0, 0));
 	_pos2 = Vector(0, -(float)_textureHeight);
+	_scrollX = 0.f;
 }
 
 void Background::Update(float deltaTime)
@@ -58,16 +67,49 @@ void Background::Update(float deltaTime)
 	{
 		_pos2.y -= (_textureHeight * 2);
 	}
+
+	// 가로 스크롤 진행 + 순환 (텍스처 폭 기준)
+	_scrollX += (_moveSpeedX * deltaTime);
+	if (_textureWidth > 0)
+	{
+		if (_scrollX >= _textureWidth)
+			_scrollX -= _textureWidth;
+		if (_scrollX < 0)
+			_scrollX += _textureWidth;
+	}
 }
 
 void Background::Render(HDC hdc)
 {
 	//Super::Render(hdc);
 
-	// 두개의 텍스처를 순환해서 그린다.
-	if (_renderer)
+	if (_renderer == nullptr)
+		return;
+
+	if (_moveSpeedX == 0.f)
 	{
-		_renderer->Render(hdc, GetPos());	// 1번
-		_renderer->Render(hdc, _pos2);		// 2번
+		// 가로 스크롤이 없으면 기존과 동일하게 세로 2장만 그린다.
+		_renderer->Render(hdc, GetPos());
+		_renderer->Render(hdc, _pos2);
+		return;
 	}
+
+	// 가로로 스크롤할 때는 복사본이 필드 폭(GWinSizeX)을 넘어 사이드바를 덮지 않도록
+	// 필드 영역으로 클리핑한 뒤, 세로 2장 x 가로 2장(총 4장)을 순환해서 그린다.
+	int32 savedDC = ::SaveDC(hdc);
+	::IntersectClipRect(hdc, 0, 0, GWinSizeX, GWinSizeY);
+
+	{
+		float xs[2] = { -_scrollX, -_scrollX + (float)_textureWidth };
+		float ys[2] = { GetPos().y, _pos2.y };
+		for (int32 yi = 0; yi < 2; ++yi)
+		{
+			for (int32 xi = 0; xi < 2; ++xi)
+			{
+				_renderer->Render(hdc, Vector(xs[xi], ys[yi]));
+			}
+		}
+	}
+
+	::RestoreDC(hdc, savedDC);
 }

@@ -1,4 +1,5 @@
 ﻿#include "pch.h"
+#include "Game.h"
 #include "Scene.h"
 #include "Player.h"
 #include "Enemy.h"
@@ -248,8 +249,8 @@ if(_isPaused)
 		_state = GameSceneState::Stage2;
 		_stageElapsedTime = 0.f;
 		_nextStage2WaveIndex = 0;
-		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
-		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG", 15.f, 0.f);
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG", 15.f, 0.f);
 	}
 	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_3))
 	{
@@ -260,8 +261,8 @@ if(_isPaused)
 		_stageElapsedTime = 0.f;
 		_nextStage3WaveIndex = 0;
 		_stage3Wave2 = false;
-		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
-		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG", 15.f, 0.f);
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG", 15.f, 0.f);
 	}
 
 
@@ -306,8 +307,8 @@ if(_isPaused)
 				// Stage1의 _stageElapsedTime을 그대로 물려받으면 g_stage2WaveTable의
 				// time 값과 어긋나므로 Stage2 시작 시점 기준으로 리셋한다.
 				_stageElapsedTime = 0.f;
-				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG");
-				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG");
+				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG", 15.f, 0.f);
+				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG", 15.f, 0.f);
 				_state = GameSceneState::Stage2;
 			}
 
@@ -458,7 +459,7 @@ if(_isPaused)
 					Player* player = new Player();
 					
 					player->Init();
-					player->SetPos(Vector(GWinSizeX * 0.5f, 400));
+					player->SetPos(Vector(GWinSizeX * 0.5f, 650));
 					player->SetInvincible(3.3f);
 					_reservedAdd.push_back(player);
 					_player = player;
@@ -877,7 +878,7 @@ void GameScene::createObjects()
 	// 플레이어
 	Player* player = new Player();
 	player->Init();
-	player->SetPos(Vector(GWinSizeX * 0.5f, 400));
+	player->SetPos(Vector(GWinSizeX * 0.5f, 650));
 	_reservedAdd.push_back(player);
 
 	// 플레이어 객체를 캐싱해두자.
@@ -908,8 +909,12 @@ void GameScene::registerActor(Actor* actor)
 
 void GameScene::onPlayerDead()
 {
+	
 	if(_continueCount < MAX_CONTINUE)
 	{
+		Vector SpawnPos(GWinSizeX * 0.5f, 50.f);
+		for(int32 i = 0; i < 6; ++i)
+			Game::GetInstance().GetScene()->SpawnItem(SpawnPos, ItemKind::Power, 128, true);
 		_stateBeforeDeath = _state;
 		_continueSelectYes = true;
 		_state = GameSceneState::Continue;
@@ -930,6 +935,7 @@ void GameScene::removeActor(Actor* actor)
 	// 캐싱해두고 있던 포인터도 갱신해주자.
 	if (actor == _player)
 	{
+		_playerDeathPos = _player->GetPos();
 		_player = nullptr;
 	}
 

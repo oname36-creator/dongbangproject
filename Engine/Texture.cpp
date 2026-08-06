@@ -43,9 +43,14 @@ void Texture::Load(wstring texturePath, int32 transparent, int32 row, int32 col,
 	// 쪼개진 1개의 frame size
 	_frameSizeX = _bitmapSizeX / _col;
 	_frameSizeY = _bitmapSizeY / _row;
+
+	_scratchHdc = CreateCompatibleDC(hdc);
+	_scratchBitmap = CreateCompatibleBitmap(hdc, _frameSizeX, _frameSizeY);
+	HBITMAP prevScratch = (HBITMAP)SelectObject(_scratchHdc, _scratchBitmap);
+	DeleteObject(prevScratch);
 }
 
-void Texture::Render(HDC hdc, Vector worldPos, Vector srcPos)
+void Texture::Render(HDC hdc, Vector worldPos, Vector srcPos, BYTE alpha)
 {
 	// 가운데 좌표기준으로 그림이 그려지게 보정해주자.
 	Vector renderPos = Game::GetInstance().GetScene()->ConvertWorldToScreen(worldPos);
@@ -55,8 +60,25 @@ void Texture::Render(HDC hdc, Vector worldPos, Vector srcPos)
 		renderPos.x -= (_frameSizeX * 0.5f);
 		renderPos.y -= (_frameSizeX * 0.5f);
 	}
+	if ( alpha < 255)
+	{
+		BitBlt ( _scratchHdc, 0, 0, (int32)_frameSizeX, (int32)_frameSizeY, hdc, (int32)renderPos.x, (int32)renderPos.y, SRCCOPY);
+		TransparentBlt(_scratchHdc, 0, 0, (int32)_frameSizeX, (int32)_frameSizeY,
+						_bitmapHdc, (int32)srcPos.x, (int32)srcPos.y, (int32)_frameSizeX, (int32)_frameSizeY,
+						_transparent);
+		BLENDFUNCTION bf{};
+		bf.BlendOp = AC_SRC_OVER;
+		bf.BlendFlags = 0;
+		bf.SourceConstantAlpha = alpha;
+		bf.AlphaFormat = 0;   // 픽셀별 알파 없음 → 균일 alpha만 적용
 
-	if (_transparent == -1)
+		AlphaBlend(hdc, (int32)renderPos.x, (int32)renderPos.y, (int32)_frameSizeX, (int32)_frameSizeY,
+				_scratchHdc, 0, 0, (int32)_frameSizeX, (int32)_frameSizeY, bf);
+
+		
+
+	}
+	else if (_transparent == -1)
 	{
 		::BitBlt(hdc,
 			(int32)renderPos.x,
@@ -119,4 +141,10 @@ void Texture::RenderScreen(HDC hdc, Vector screenPos, Vector srcPos)
 			_frameSizeY,
 			_transparent);
 	}
+}
+
+Texture::~Texture()
+{
+	DeleteDC(_scratchHdc);
+	DeleteObject(_scratchBitmap);
 }

@@ -75,3 +75,19 @@ void SpriteAnimRenderer::Render(HDC hdc, Vector pos)
 
 	_texture->Render(hdc, pos, Vector(srcX, srcY));
 }
+
+uint32 SpriteAnimRenderer::GetSizeX() const
+{
+	if (_texture)
+		return _texture->GetFrameSize().cx;
+
+	return 0;
+}
+
+uint32 SpriteAnimRenderer::GetSizeY() const
+{
+	if (_texture)
+		return _texture->GetFrameSize().cy;
+
+	return 0;
+}

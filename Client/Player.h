@@ -5,6 +5,7 @@ class Player : public Airplane
 {
 	using Super = Airplane;
 public:
+	~Player();
 	void Init();
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
@@ -15,12 +16,15 @@ public:
 	int32 GetLives() const { return _lives; }
 	int32 GetBoom() const {return _boom;}
 	int32 GetMaxHp() const { return 100; }
+	int32 GetPowerStack() const { return _powerStack; }
 private:
 	void move(float x, float y);
 	void takeDamage();
 	void attack();
 	int32 getPowerStage() const;
 private:
+	class ImageRenderer* _satelliteRenderer = nullptr;
+
 	int32 _attack = 1;	// 공격력
 	float _moveSpeed = 300.f;
 	float _speed = 0.f;
@@ -41,6 +45,7 @@ private:
 	int32 _powerStack = 0;
 	int32 _lives = 3;
 	float subSpacing = 0.f;
+	float _satelliteSpacing = 30.f;
 };
 
 

@@ -32,11 +32,17 @@ void UIManager::Render(HDC hdc)
 	if (lives < 0)
 		lives = 0;
 	
-	wstring lifeStr = std::format(L"life: {0} Bomb: {1}", lives, player->GetBoom());
-	::TextOut(hdc, 10, 40, lifeStr.c_str(), static_cast<int32>(lifeStr.size()));
+	// 사이드바 영역 (플레이필드 오른쪽, GWinSizeX ~ GWindowSizeX)
+	int32 sidebarX = GWinSizeX + 20;
 
 	wstring scoreStr = std::format(L"Score : {0}", scene->GetScore());
-	::TextOut(hdc, GWinSizeX -150, 40, scoreStr.c_str(), static_cast<int32>(scoreStr.size()));
+	::TextOut(hdc, sidebarX, 40, scoreStr.c_str(), static_cast<int32>(scoreStr.size()));
+
+	wstring lifeStr = std::format(L"life: {0} Bomb: {1}", lives, player->GetBoom());
+	::TextOut(hdc, sidebarX, 70, lifeStr.c_str(), static_cast<int32>(lifeStr.size()));
+
+	wstring powerStr = std::format(L"Power: {0}", player->GetPowerStack());
+	::TextOut(hdc, sidebarX, 100, powerStr.c_str(), static_cast<int32>(powerStr.size()));
 
 	Boss* boss = scene->GetBoss();
 if (boss != nullptr)

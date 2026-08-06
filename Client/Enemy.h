@@ -28,6 +28,8 @@ private:
 	void shootBullet();
 
 private:
+	class SpriteAnimRenderer* _animRenderer = nullptr;
+
 	int32 _hp = 2;
 	EnemyType _type;
 

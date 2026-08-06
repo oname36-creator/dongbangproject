@@ -35,7 +35,8 @@ void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst, bool au
 	if(renderer == nullptr)
 		renderer = AddComponent<ImageRenderer>();
 	if(ItemKind::Power == kind)
-	renderer->Init(powerValue >= 8 ? L"BigPowerItem" : L"PowerItem");
+	renderer->Init(powerValue >= 128 ? L"FullPowerItem"
+		 : powerValue >= 8 ? L"BigPowerItem" : L"PowerItem");
 	else if(ItemKind::Score == kind)
 	renderer->Init(L"ScoreItem");
 
@@ -45,7 +46,7 @@ void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst, bool au
 	{
 		collider = AddComponent<ColliderCircle>();
 	}
-	collider->Init(this, renderer->GetSizeX());
+	collider->Init(this, renderer->GetSizeX()*2);
 
 	_collider = collider;
 	
@@ -79,6 +80,18 @@ void Item::Update(float deltaTime)
 	Vector pos = GetPos();
 	pos.x += _velocityX * deltaTime;
 	pos.y += _velocityY * deltaTime;
+
+	if(pos.x < 0)
+	{
+		pos.x = 0;
+		_velocityX = 0.f;
+	}
+	else if (pos.x > (float)GWinSizeX)
+	{
+		pos.x = (float)GWinSizeX;
+		_velocityX = 0.f;
+	}
+
 	SetPos(pos);
 
 	if ( GetPos().y > GWinSizeY)

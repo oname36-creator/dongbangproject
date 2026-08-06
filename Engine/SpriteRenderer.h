@@ -11,6 +11,10 @@ public:
 	virtual void Render(HDC hdc, Vector pos) override;
 
 	bool IsEnd() const { return _isEnd; }
+	void SetLoop(bool loop) { _loop = loop; }
+
+	uint32 GetSizeX() const;
+	uint32 GetSizeY() const;
 
 private:
 	class Texture* _texture = nullptr;

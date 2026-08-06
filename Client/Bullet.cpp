@@ -27,8 +27,8 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	}
 	else
 	{
-		// 플레이어의 총알
-		textureKey = L"PlayerBullet";
+		// 플레이어의 총알 (보조 호밍탄은 다른 텍스처 사용)
+		textureKey = isHoming ? L"PlayerHomingBullet" : L"PlayerBullet";
 		_dir = dir;
 		_moveSpeed = speed;
 	}
@@ -47,6 +47,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	}
 
 	renderer->Init(textureKey, textureIndex);
+	renderer->SetAlpha(_type == BulletType::Player ? 180 : 255);
 
 	// texture의 width 만큼 충돌체를 생성한다.
 	//_collider = new ColliderCircle();

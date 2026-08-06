@@ -23,7 +23,7 @@ public:
 private:
 	class ImageRenderer* _renderer = nullptr;
 	class ColliderCircle* _collider = nullptr;
-	float _fallSpeed = 60.f;
+	float _fallSpeed = 200.f;
 	ItemKind _kind = ItemKind::Power;
 	int32 _powerValue = 1;
 

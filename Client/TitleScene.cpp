@@ -18,12 +18,12 @@ void TitleScene::Update(float deltaTime)
 
 void TitleScene::Render(HDC hdc)
 {
-	RECT rect{ 0, 0, GWinSizeX, GWinSizeY };
+	RECT rect{ 0, 0, GWindowSizeX, GWinSizeY };
 	FillRect(hdc, &rect, (HBRUSH)GetStockObject(BLACK_BRUSH));
 
 	const wchar_t* title = L"DongbangProject";
-	::TextOut(hdc, GWinSizeX / 2 - 60, GWinSizeY / 2 - 20, title, static_cast<int32>(wcslen(title)));
+	::TextOut(hdc, GWindowSizeX / 2 - 60, GWinSizeY / 2 - 20, title, static_cast<int32>(wcslen(title)));
 
 	const wchar_t* guide = L"Press Z to Start";
-	::TextOut(hdc, GWinSizeX / 2 - 60, GWinSizeY / 2 + 10, guide, static_cast<int32>(wcslen(guide)));
+	::TextOut(hdc, GWindowSizeX / 2 - 60, GWinSizeY / 2 + 10, guide, static_cast<int32>(wcslen(guide)));
 }

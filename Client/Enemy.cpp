@@ -8,6 +8,7 @@
 #include "TimeManager.h"
 #include "colliderCircle.h"
 #include "ResourceManager.h"
+#include "SpriteRenderer.h"
 #include <random>
 
 static random_device rd;
@@ -17,7 +18,25 @@ void Enemy::Init(Vector pos, wstring key)
 {
 	SetPos(pos);
 	_isDead = false;
-	loadTexture(key);
+
+	// Player와 달리 Enemy는 idle 애니메이션 재생이 필요해서, Airplane::loadTexture(ImageRenderer)
+	// 대신 SpriteAnimRenderer를 직접 붙인다.
+	SpriteAnimRenderer* renderer = GetComponent<SpriteAnimRenderer>();
+	if (renderer == nullptr)
+	{
+		renderer = AddComponent<SpriteAnimRenderer>();
+	}
+	renderer->Init(key);
+	renderer->SetLoop(true);
+	_animRenderer = renderer;
+
+	ColliderCircle* collider = GetComponent<ColliderCircle>();
+	if (collider == nullptr)
+	{
+		collider = AddComponent<ColliderCircle>();
+	}
+	collider->Init(this, renderer->GetSizeX() * 0.7f);
+	_collider = collider;
 
 	// 주기적으로 총알 발사하는 Timer
 	_shootTimerId = TimeManager::GetInstance().AddTimer([this]() 
@@ -127,20 +146,22 @@ void Enemy::OnEnter(Actor* other) // other : Player
 			// 점수 증가
 			Game::GetInstance().GetScene()->AddScore(100);
 
-			uniform_int_distribution<int> randitem(1,10);
+			uniform_int_distribution<int> randitem(1,100);
 			int32 randnum = randitem (gen);
 
-			if(randnum <= 4)
+			if(randnum <= 40)
 			{
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power );
 			}
 
-			else if(randnum > 4 && randnum <= 8 )
+			else if(randnum > 40 && randnum <= 80 )
 			{
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Score );
 			}
-			else if(randnum == 9)
+			else if(randnum > 80 && randnum <= 85 )
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power , 8);
+			else if(randnum == 86)
+				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power , 128);
 			}
 			// 파티클 재생
 		

@@ -166,6 +166,7 @@ private:
 	// ConvertWorldToScreen()의 offset이 0이 되어 월드 좌표 = 화면 좌표가 된다.
 	Vector _cameraPos = {GWinSizeX/2, GWinSizeY/2};
 	Vector _mapSize;
+	Vector _playerDeathPos;
 	class Player* _player = nullptr;
 	class Boss* _boss = nullptr;
 	bool _bossSpawned = false;

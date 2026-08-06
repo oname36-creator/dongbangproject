@@ -10,6 +10,7 @@ public:
 	void Init(wstring textureKey, int32 ix = -1, int32 iy = -1);
 	virtual void Render(HDC hdc, Vector pos) override;
 	void SetApplyCenter(bool apply);
+	void SetAlpha(BYTE alpha){ _alpha = alpha;};
 
 	uint32 GetSizeX() const;
 	uint32 GetSizeY() const;
@@ -20,6 +21,7 @@ private:
 	// 애니메이션 재생은 아닌데, sprite image 중에 하나를 그리고 싶을때
 	int32 _iX = -1;
 	int32 _iY = -1;
+	BYTE _alpha = 255;
 
 };
 

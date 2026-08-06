@@ -17,7 +17,8 @@ static mt19937 gen(rd());
 void Player::Init()
 {
 	loadTexture(L"Player");
-
+	_satelliteRenderer = new ImageRenderer();
+	_satelliteRenderer->Init(L"PlayerSatellite");
 	// 충돌체가 만들어져있는데, 충돌매니저에서 충돌체크를 실행해야하는 '주체'
 	if (_collider)
 	{
@@ -29,6 +30,9 @@ void Player::Init()
 void Player::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
+	_satelliteSpacing += (subSpacing - _satelliteSpacing) * 8.f * deltaTime;   // 8.f = 수렴 속도, 취향껏 조절
+
+
 
 	if(_invincibleTime > 0.f)
 	{
@@ -49,7 +53,7 @@ void Player::Update(float deltaTime)
 	if(InputManager::GetInstance().GetButtonPressed(KeyType::LOW_SPEED))
 	{
 		_speed *= 0.5f;
-		subSpacing = 0.f;
+		subSpacing = 10.f;
 
 	}
 	else subSpacing = 30.f;
@@ -103,6 +107,23 @@ void Player::Render(HDC hdc)
 			return;   // 이번 프레임은 그리지 않음 -> 깜빡임
 	}
 
+	if ( _powerLevel >= 1 && _satelliteRenderer )
+{
+    float t = 1.f - (_satelliteSpacing - 10.f) / (30.f - 10.f);   // 0=펼쳐짐, 1=최소간격
+    float headLift = t * 25.f;
+	float swingBump = t * ( 1.f - t) * 4.f * 20.f;
+	float arc = headLift + swingBump;                    
+
+    Vector pos1 = GetPos();
+    pos1.x -= _satelliteSpacing;
+    pos1.y -= arc;
+    Vector pos2 = GetPos();
+    pos2.x += _satelliteSpacing;
+    pos2.y -= arc;
+    _satelliteRenderer->Render(hdc, pos1);
+    _satelliteRenderer->Render(hdc, pos2);
+}
+
 	Super::Render(hdc);
 }
 
@@ -122,6 +143,8 @@ void Player::OnEnter(Actor* other)
 		{
 			if(_powerStack < 128 )
 				_powerStack += item->GetPowerValue();
+			if(_powerStack > 128 )
+				_powerStack = 128;
 		}
 		else if ( item -> GetKind() == ItemKind::Score)
 		{
@@ -144,23 +167,23 @@ else
     _renderer->Init(L"Player", 1);      // 좌우 입력 없음
 
 	// 양옆
-	if (newPos.x <= GetWidth())
+	if (newPos.x <= GetWidth() * 0.5f)
 	{
-		newPos.x = (float)GetWidth();
+		newPos.x = (float)GetWidth() * 0.5f;
 	}
-	else if (newPos.x >= GWinSizeX - GetWidth())
+	else if (newPos.x >= GWinSizeX - GetWidth() * 0.5f)
 	{
-		newPos.x = (float)GWinSizeX - GetWidth();
+		newPos.x = (float)GWinSizeX - GetWidth() * 0.5f;
 	}
 
 	// 위아래
-	if (newPos.y <= GetHeight())	// 이런 로직들은 world 좌표계로 생각해서 그대로 두고.
+	if (newPos.y <= GetHeight() * 0.5f)	// 이런 로직들은 world 좌표계로 생각해서 그대로 두고.
 	{
-		newPos.y = (float)GetHeight();
+		newPos.y = (float)GetHeight() * 0.5f;
 	}
-	else if (newPos.y >= GWinSizeY - GetHeight())
+	else if (newPos.y >= GWinSizeY - GetHeight() * 0.5f)
 	{
-		newPos.y = (float)GWinSizeY - GetHeight();
+		newPos.y = (float)GWinSizeY - GetHeight() * 0.5f;
 	}
 
 	SetPos(newPos);
@@ -204,7 +227,7 @@ else
 	}
 }
 
-	SetPos(Vector(GWinSizeX * 0.5f, 400.f));
+	SetPos(Vector(GWinSizeX * 0.5f, 650.f));
 
 
 
@@ -223,7 +246,7 @@ else
 
 void Player::attack()
 {
-		int32 shotCount = 1 + _powerLevel;
+		int32 shotCount = 1 + _powerLevel / 2;
 		float spacing = 10.f;
 		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
 
@@ -249,8 +272,8 @@ void Player::attack()
 		Vector pos1 = GetPos();
 		Vector pos2 = GetPos();
 
-		pos1.x -= subSpacing;
-    	pos2.x += subSpacing;
+		pos1.x -= _satelliteSpacing;
+    	pos2.x += _satelliteSpacing;
 
 		Game::GetInstance().GetScene()->FireHoming(pos1, BulletType::Player, dir, 400.f, 240.f);
 		Game::GetInstance().GetScene()->FireHoming(pos2, BulletType::Player, dir, 400.f, 240.f);
@@ -284,4 +307,9 @@ int32 Player::getPowerStage() const
 		return 7;
 	else
 		return 8;
+}
+
+Player :: ~Player()
+{
+	delete _satelliteRenderer;
 }

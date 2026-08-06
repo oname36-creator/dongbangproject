@@ -4,8 +4,10 @@ class Texture
 {
 public:
 	void Load(wstring texturePath, int32 transparent, int32 row, int32 col, float dur);
-	void Render(HDC hdc, Vector pos, Vector srcPos = Vector(0,0));
+	void Render(HDC hdc, Vector pos, Vector srcPos = Vector(0,0), BYTE alpha = 255);
 	void RenderScreen(HDC hdc, Vector screenPos, Vector srcPos = Vector(0,0));
+
+	~Texture();
 
 	uint32 GetSizeX() const { return _bitmapSizeX; }
 	uint32 GetSizeY() const { return _bitmapSizeY; }
@@ -31,6 +33,11 @@ private:
 	int32		_frameSizeX = 0;
 	int32		_frameSizeY = 0;
 	float		_dur = 0;
+
+	HDC 		_scratchHdc = 0;
+	HBITMAP 	_scratchBitmap = 0;
+	int32 		_scratchSizeX = 0;
+	int32 		_scratchSizeY = 0;
 };
 
 
