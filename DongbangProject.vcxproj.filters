@@ -109,6 +109,12 @@
     <ClInclude Include="Client\TitleScene.h">
       <Filter>Client</Filter>
     </ClInclude>
+    <ClInclude Include="Client\LoadingScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\CharacterSelectScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
     <ClInclude Include="Client\ResultScene.h">
       <Filter>Client</Filter>
     </ClInclude>
@@ -220,6 +226,12 @@
       <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\TitleScene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\LoadingScene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\CharacterSelectScene.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\ResultScene.cpp">

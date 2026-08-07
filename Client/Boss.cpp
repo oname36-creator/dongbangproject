@@ -6,6 +6,8 @@
 #include "Player.h"
 #include "TimeManager.h"
 #include "colliderCircle.h"
+#include "SpriteRenderer.h"
+#include "ResourceManager.h"
 
 namespace
 {
@@ -23,11 +25,33 @@ namespace
 	}
 }
 
-void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp)
+void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
+				 float bulletCountMul, float bulletSpeedMul)
 {
 	SetPos(pos);
-	loadTexture(key);
+
+	_baseKey = key;
+	SpriteAnimRenderer* renderer = GetComponent<SpriteAnimRenderer>();
+	if (renderer == nullptr)
+	{
+		renderer = AddComponent<SpriteAnimRenderer>();
+	}
+	renderer->SetLoop(true);
+	_animRenderer = renderer;
+	_animState = BossAnimState::Idle;
+	_animRenderer->Init(_baseKey + L"Idle");
+
+	ColliderCircle* collider = GetComponent<ColliderCircle>();
+	if (collider == nullptr)
+	{
+		collider = AddComponent<ColliderCircle>();
+	}
+	collider->Init(this, renderer->GetSizeX() * 0.7f);
+	_collider = collider;
+
 	_maxHp = maxHp;
+	_bulletCountMul = bulletCountMul;
+	_bulletSpeedMul = bulletSpeedMul;
 	_hp = maxHp;
 	_curPhaseIndex = 0;
 	_phases = phases;
@@ -64,12 +88,28 @@ void Boss::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
 
-	Vector dir = _moveTargetPos - GetPos();
+	Vector toTarget = _moveTargetPos - GetPos();
+	float distToTarget = toTarget.Length();
+	Vector dir = toTarget;
 	dir.Normalize();
 	Vector pos = GetPos();
 	pos += dir * (_moveSpeed * deltaTime);
 	SetPos(pos);
-	
+
+	if (_attackPoseTimer > 0.f)
+	{
+		_attackPoseTimer -= deltaTime;
+		setAnimState(BossAnimState::Attack);
+	}
+	else if (distToTarget > 5.0f)
+	{
+		setAnimState(BossAnimState::Move);
+	}
+	else
+	{
+		setAnimState(BossAnimState::Idle);
+	}
+
 	_phaseElapsedTime += deltaTime;
 	const vector<TimelineStep>& timeline = _phases[_curPhaseIndex].timeline;
 	while (_timelineIndex < (int32)timeline.size() && timeline[_timelineIndex].time <= _phaseElapsedTime)
@@ -92,6 +132,40 @@ void Boss::Update(float deltaTime)
 void Boss::Render(HDC hdc)
 {
 	Super::Render(hdc);
+}
+
+void Boss::setAnimState(BossAnimState state)
+{
+	if (_animState == state || _animRenderer == nullptr)
+		return;
+
+	_animState = state;
+
+	switch (state)
+	{
+		case BossAnimState::Idle :
+			_animRenderer->Init(_baseKey + L"Idle");
+			_animRenderer->SetLoop(true);
+			break;
+		case BossAnimState::Move :
+			// 한 번만 재생하고 마지막 프레임에서 멈춘 채로 이동을 계속한다.
+			_animRenderer->Init(_baseKey + L"Move");
+			_animRenderer->SetLoop(false);
+			break;
+		case BossAnimState::Attack :
+		{
+			// Move와 마찬가지로 한 번만 재생하고 마지막 프레임에서 멈춘다.
+			// 공격 전용 텍스처가 없는 보스(예: Boss2)는 Idle로 대체한다.
+			wstring attackKey = _baseKey + L"Attack";
+			if (ResourceManager::GetInstance().GetTexture(attackKey) == nullptr)
+			{
+				attackKey = _baseKey + L"Idle";
+			}
+			_animRenderer->Init(attackKey);
+			_animRenderer->SetLoop(false);
+			break;
+		}
+	}
 }
 
 void Boss::OnEnter(Actor* other) // other : Bullet
@@ -144,13 +218,17 @@ void Boss::transitionToNextPhase()
 
 void Boss::shootBullet(BossPatternType pattern)
 {
+	_attackPoseTimer = 0.3f;
+
 	switch(pattern)
 	{
 		case BossPatternType::Fan :
-			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f, 5, 300.f);
+			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f,
+				(int32)(5 * _bulletCountMul), 300.f * _bulletSpeedMul);
 			break;
 		case BossPatternType::Circle :
-			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy, 12, 300.f);
+			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy,
+				(int32)(12 * _bulletCountMul), 300.f * _bulletSpeedMul);
 			break;
 		case BossPatternType::AimedBurst :
 		{
@@ -162,7 +240,8 @@ void Boss::shootBullet(BossPatternType pattern)
 				dir.Normalize();
 			}
 			_burstDir = dir;
-			_burstShotsRemaining = 8;
+			_burstShotsRemaining = (int32)(8 * _bulletCountMul);
+			_burstTotalShots = _burstShotsRemaining;
 
 			// 이전 버스트가 아직 안 끝났으면 정리하고 새로 시작 (중복 타이머 방지)
 			TimeManager::GetInstance().Remove(_burstShootTimerId);
@@ -183,6 +262,10 @@ void Boss::shootBullet(BossPatternType pattern)
 		case BossPatternType::Cross :
 			Game::GetInstance().GetScene()->FireCross(GetPos().y, BulletType::Enemy, 300.f);
 			break;
+		case BossPatternType::Random :
+			Game::GetInstance().GetScene()->FireRandom(GetPos(), BulletType::Enemy,
+				(int32)(8 * _bulletCountMul), 250.f * _bulletSpeedMul);
+			break;
 	}
 }
 
@@ -195,7 +278,8 @@ void Boss::shootSpiralBullet()
 	if (scene == nullptr)
 		return;
 
-	scene->FireSpiral(GetPos(), BulletType::Enemy, 2, 300.f, _spiralAngle, 10.f);
+	_attackPoseTimer = 0.3f;
+	scene->FireSpiral(GetPos(), BulletType::Enemy, (int32)(2 * _bulletCountMul), 300.f * _bulletSpeedMul, _spiralAngle, 10.f);
 }
 
 void Boss::shootAimedBurst()
@@ -209,7 +293,14 @@ void Boss::shootAimedBurst()
 
 	// 고정해둔 방향으로 한 발씩 연사. 총알들이 시간차를 두고 같은 경로를 따라가면서
 	// 실시간으로 이어진 줄처럼 보인다.
-	scene->FireStraight(GetPos(), BulletType::Enemy, _burstDir, 300.f);
+	// 첫 발은 느리게, 뒤로 갈수록 점점 빨라져서 뒤에 쏜 총알이 앞선 총알을 따라잡는 느낌을 낸다.
+	_attackPoseTimer = 0.3f;
+	int32 shotIndex = _burstTotalShots - _burstShotsRemaining;
+	float t = (_burstTotalShots > 1) ? (float)shotIndex / (_burstTotalShots - 1) : 0.f;
+	constexpr float minSpeed = 150.f;
+	constexpr float maxSpeed = 450.f;
+	float speed = (minSpeed + (maxSpeed - minSpeed) * t) * _bulletSpeedMul;
+	scene->FireStraight(GetPos(), BulletType::Enemy, _burstDir, speed);
 
 	_burstShotsRemaining--;
 	if (_burstShotsRemaining <= 0)
@@ -229,15 +320,16 @@ void Boss::shootTelegraphBullet()
 	Vector warnPos = player->GetPos();
 	Game::GetInstance().GetScene()->CreateEffect(warnPos);
 
-	_telegraphTimerId = TimeManager::GetInstance().AddTimer([warnPos]()
+	_telegraphTimerId = TimeManager::GetInstance().AddTimer([warnPos, countMul = _bulletCountMul, speedMul = _bulletSpeedMul]()
 	{
 		// this를 캡처하지 않는다: Boss는 풀이 아니라 new/delete로 관리되므로,
 		// 이 타이머가 delete된 Boss를 가리키는 채로 남아있을 수 있다 (use-after-free 방지).
+		// 배율은 값으로 미리 복사해서 캡처한다.
 		GameScene* scene = Game::GetInstance().GetScene();
 		if (scene == nullptr)
 			return;
 
-		scene->FireCircle(warnPos, BulletType::Enemy, 10, 250.f);
+		scene->FireCircle(warnPos, BulletType::Enemy, (int32)(10 * countMul), 250.f * speedMul);
 	}, 1.8f, false);
 }
 

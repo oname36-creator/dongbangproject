@@ -10,7 +10,7 @@
 #include "DataManager.h"
 #include "UIManager.h"
 #include "SceneManager.h"
-#include "TitleScene.h"
+#include "LoadingScene.h"
 
 void Game::Init(HWND hwnd)
 {
@@ -52,7 +52,7 @@ void Game::Init(HWND hwnd)
 	DataManager::GetInstance().Load();
 
 	// GameScene 초기화
-	SceneManager::GetInstance().ChangeScene(new TitleScene());
+	SceneManager::GetInstance().ChangeScene(new LoadingScene());
 
 	// CollisionManager 초기화
 	CollisionManager::GetInstance().Init();

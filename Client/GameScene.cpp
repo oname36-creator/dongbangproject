@@ -37,24 +37,25 @@ struct GameScene::WaveEntry
 	wstring enemyKey;   // ResourceData의 텍스처 키
 	Vector pos;         // 첫 적이 등장할 위치
 	int32 count;        // 가로로 나열할 개수
+	EntryDirection entryDir = EntryDirection::Top;
 };
 
 static const GameScene::WaveEntry g_waveTable[] =
 {
-	{ 2.0f,  L"Enemy1", {50, 100}, 4 },
-	{ 6.0f,  L"Enemy2", {50, 100}, 4 },
-	{ 10.0f, L"Enemy3", {50, 100}, 4 },
-	{ 14.0f, L"Enemy4", {50, 100}, 4 },
+	{ 2.0f,  L"Enemy1", {50, 130}, 8 },
+	{ 9.0f,  L"Enemy2", {50, 130}, 8 },
+	{ 16.0f, L"Enemy3", {50, 130}, 8 },
+	{ 23.0f, L"Enemy4", {50, 130}, 8 },
 };
 
 // Stage 2 웨이브 테이블. Stage2 상태 진입 시 _stageElapsedTime을 0으로 리셋하므로
 // time 값은 g_waveTable과 마찬가지로 "Stage2 시작 후 경과 시간" 기준이다.
 static const GameScene::WaveEntry g_stage2WaveTable[] =
 {
-	{ 2.0f,  L"Enemy2", {50, 100}, 4 },
-	{ 5.0f,  L"Enemy1", {50, 100}, 4 },
-	{ 8.0f,  L"Enemy4", {50, 100}, 4 },
-	{ 11.0f, L"Enemy3", {50, 100}, 4 },
+	{ 2.0f,  L"Enemy2", {50, 130}, 8 },
+	{ 8.0f,  L"Enemy1", {50, 130}, 8 },
+	{ 14.0f, L"Enemy4", {50, 130}, 8 },
+	{ 20.0f, L"Enemy3", {50, 130}, 8 },
 };
 
 // Stage 3 웨이브 테이블. 원작 동방 스테이지 구조(잡몹 웨이브 -> 중간보스 -> 잡몹 웨이브 -> 스테이지 보스)를
@@ -62,16 +63,16 @@ static const GameScene::WaveEntry g_stage2WaveTable[] =
 // (Stage1->Stage2 전환 시 _stageElapsedTime을 리셋하는 것과 같은 이유).
 static const GameScene::WaveEntry g_stage3Wave1Table[] =
 {
-	{ 2.0f,  L"Enemy1", {50, 100}, 5 },
-	{ 5.0f,  L"Enemy3", {50, 100}, 4 },
-	{ 8.0f,  L"Enemy2", {50, 100}, 5 },
+	{ 2.0f,  L"Enemy1", {50, 130}, 8 },
+	{ 8.0f,  L"Enemy3", {50, 130}, 8 },
+	{ 14.0f, L"Enemy2", {50, 130}, 8 },
 };
 
 static const GameScene::WaveEntry g_stage3Wave2Table[] =
 {
-	{ 2.0f,  L"Enemy4", {50, 100}, 4 },
-	{ 5.0f,  L"Enemy1", {50, 100}, 5 },
-	{ 8.0f,  L"Enemy3", {50, 100}, 5 },
+	{ 2.0f,  L"Enemy4", {50, 130}, 8 },
+	{ 8.0f,  L"Enemy1", {50, 130}, 8 },
+	{ 14.0f, L"Enemy3", {50, 130}, 8 },
 };
 
 // Stage1 보스 페이즈: 기존 Fan -> Circle -> Spiral 순서 그대로.
@@ -80,16 +81,23 @@ static const GameScene::WaveEntry g_stage3Wave2Table[] =
 // (Spiral 스텝은 실제로는 연속 타이머가 쏘므로 cycleLength 값 자체는 의미 없음)
 static const vector<BossPhase> g_stage1BossPhases =
 {
-	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 50 },
-	{ { { 0.f, BossPatternType::Circle } }, 1.0f, 20 },
+	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 100 },
+	{ { { 0.f, BossPatternType::Circle } }, 1.0f, 40 },
 	{ { { 0.f, BossPatternType::Spiral } }, 1.0f, 0 },
 };
 
-// Stage2 보스 페이즈: 조준 라인탄 -> 예고 판정(낙뢰) -> 원형탄.
+// Stage2 보스 페이즈: 조준 라인탄 -> 무작위 난사 -> 원형탄.
 static const vector<BossPhase> g_stage2BossPhases =
 {
-	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 100 },
-	{ { { 0.f, BossPatternType::Telegraph } }, 2.5f, 50 },
+	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 200 },
+	{
+		{
+			{ 0.0f, BossPatternType::Random }, { 0.3f, BossPatternType::Random },
+			{ 0.6f, BossPatternType::Random }, { 0.9f, BossPatternType::Random },
+			{ 1.2f, BossPatternType::Random }, { 1.5f, BossPatternType::Random },
+			{ 1.8f, BossPatternType::Random }, { 2.1f, BossPatternType::Random },
+		}, 2.5f, 100
+	},
 	{ { { 0.f, BossPatternType::Circle } }, 1.0f, 0 },
 };
 
@@ -282,9 +290,9 @@ if(_isPaused)
 			{
 				onPlayerDead(); // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
 			}
-			else if (_nextWaveIndex >= (int32)std::size(g_waveTable))
+			else if (_nextWaveIndex >= (int32)std::size(g_waveTable) && _enemyPool.GetActiveCount() == 0)
 			{
-				// 모든 웨이브를 소진했으니 보스 스테이지로 전환
+				// 모든 웨이브를 소진하고, 남아있던 일반 요정도 전부 죽은 뒤에 보스 스테이지로 전환
 				_state = GameSceneState :: Boss;
 			}
 			break;
@@ -293,7 +301,8 @@ if(_isPaused)
 			if (!_bossSpawned)
 			{
 					Boss* boss = new Boss();
-					boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage1BossPhases, 100);
+					// 1스테이지 보스만 탄수 2배 / 탄속 절반
+					boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage1BossPhases, 200, 2.0f, 0.5f);
 					_reservedAdd.push_back(boss);
 					_boss = boss;
 					_bossSpawned = true;
@@ -324,9 +333,9 @@ if(_isPaused)
 			{
 				onPlayerDead(); // _player->GetHp() = 0 이미 player가 nullptr 이기 때문에 위험하다.
 			}
-			else if (_nextStage2WaveIndex >= (int32)std::size(g_stage2WaveTable))
+			else if (_nextStage2WaveIndex >= (int32)std::size(g_stage2WaveTable) && _enemyPool.GetActiveCount() == 0)
 			{
-				// 모든 웨이브를 소진했으니 Stage2 보스로 전환
+				// 모든 웨이브를 소진하고, 남아있던 일반 요정도 전부 죽은 뒤에 Stage2 보스로 전환
 				_bossSpawned = false;
 				_state = GameSceneState :: Stage2Boss;
 			}
@@ -336,7 +345,8 @@ if(_isPaused)
 			if (!_bossSpawned)
 			{
 				Boss* boss = new Boss();
-				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage2BossPhases, 150);
+				// 2스테이지 보스도 탄수 2배 / 탄속 절반
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss2", g_stage2BossPhases, 300, 2.0f, 0.5f);
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
@@ -368,7 +378,7 @@ if(_isPaused)
 				{
 					onPlayerDead();
 				}
-				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave1Table))
+				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave1Table) && _enemyPool.GetActiveCount() == 0)
 				{
 					_bossSpawned = false;
 					_state = GameSceneState :: Stage3MidBoss;
@@ -386,7 +396,7 @@ if(_isPaused)
 				{
 					onPlayerDead();
 				}
-				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave2Table))
+				else if (_nextStage3WaveIndex >= (int32)std::size(g_stage3Wave2Table) && _enemyPool.GetActiveCount() == 0)
 				{
 					_bossSpawned = false;
 					_state = GameSceneState :: Stage3Boss;
@@ -967,7 +977,8 @@ void GameScene::removeActor(Actor* actor)
 
 void GameScene::SpawnWave(const WaveEntry& wave)
 {
-	int32 xDelta = GWinSizeX / wave.count;
+	constexpr float arcRadius = 180.0f;
+	int32 half = wave.count / 2;
 
 	for(int32 i = 0; i < wave.count; ++i)
 	{
@@ -975,7 +986,22 @@ void GameScene::SpawnWave(const WaveEntry& wave)
 		if(nullptr == enemy)
 		return;
 
-		enemy->Init(Vector{wave.pos.x + (xDelta * i), wave.pos.y}, wave.enemyKey);
+		// 목표 위치를 -60도~+60도 원호 위에 배치해서, 자리 잡았을 때 호 대형이 되게 한다.
+		float t = (wave.count > 1) ? (float)i / (wave.count - 1) : 0.5f;
+		float angleRad = (-60.0f + 120.0f * t) * (3.14159f / 180.0f);
+
+		// 호의 중심은 wave.pos.x가 아니라 필드 가로 중앙으로 고정한다.
+		// wave.pos.x(=50)는 예전 "맨 왼쪽 시작점" 의미로 쓰이던 값이라, 그대로 중심으로 쓰면
+		// 대형 절반이 화면 밖(음수 x)으로 나가버린다.
+		constexpr float centerX = GWinSizeX / 2.0f;
+		Vector target;
+		target.x = centerX + sinf(angleRad) * arcRadius;
+		target.y = wave.pos.y - (1.0f - cosf(angleRad)) * arcRadius;
+
+		// 왼쪽 자리는 오른쪽 상단에서, 오른쪽 자리는 왼쪽 상단에서 나와 서로 가로지르며 들어온다.
+		EntryDirection entryDir = (i < half) ? EntryDirection::Right : EntryDirection::Left;
+
+		enemy->Init(target, wave.enemyKey, entryDir);
 		_reservedAdd.push_back(enemy);
 	}
 }

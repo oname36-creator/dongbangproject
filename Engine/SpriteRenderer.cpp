@@ -6,6 +6,10 @@
 void SpriteAnimRenderer::Init(wstring textureKey)
 {
 	_texture = ResourceManager::GetInstance().GetTexture(textureKey);
+	_animIndexX = 0;
+	_animIndexY = 0;
+	_sumTime = 0;
+	_isEnd = false;
 }
 
 void SpriteAnimRenderer::Update(float deltaTime)

@@ -20,8 +20,6 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	if (_type == BulletType::Enemy)
 	{
 		textureKey = L"EnemyBullet";
-		// 적의 총알일 경우, sprite 5개 쪼개져있는것중에 한개 설정
-		textureIndex = rand() % 5;
 		_dir = dir;
 		_moveSpeed = speed;
 	}
@@ -56,7 +54,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	{
 		collider = AddComponent<ColliderCircle>();
 	}
-	collider->Init(this, renderer->GetSizeX());
+	collider->Init(this, renderer->GetSizeX()-2);
 
 	// 플레이어의 총알만, 충돌매니저에 등록한다.
 	collider->SetCheckCell(_type == BulletType::Player);

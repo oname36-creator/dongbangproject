@@ -14,11 +14,27 @@
 static random_device rd;
 static mt19937 gen(rd());
 
-void Enemy::Init(Vector pos, wstring key)
+void Enemy::Init(Vector pos, wstring key, EntryDirection entryDir)
 {
-	SetPos(pos);
+
 	_isDead = false;
 
+	// 항상 화면 상단 바깥의 모서리에서 출발해서, 목표까지 큰 곡선으로 가로지르며 들어온다.
+	Vector spawnPos;
+	switch (entryDir)
+	{
+		case EntryDirection::Top : spawnPos = Vector(pos.x, -50); break;
+		case EntryDirection::Left : spawnPos = Vector(-50, -50); break;
+		case EntryDirection::Right : spawnPos = Vector(GWinSizeX + 50, -50); break;
+	}
+	SetPos(spawnPos);
+
+	// 곡선 입장: 출발점의 x와 목표의 y를 섞은 제어점을 써서 위→옆으로 휘어지게 한다.
+	_isEntering = true;
+	_entryT = 0.f;
+	_entryStart = spawnPos;
+	_entryTarget = pos;
+	_entryControl = Vector(spawnPos.x, pos.y);
 	// Player와 달리 Enemy는 idle 애니메이션 재생이 필요해서, Airplane::loadTexture(ImageRenderer)
 	// 대신 SpriteAnimRenderer를 직접 붙인다.
 	SpriteAnimRenderer* renderer = GetComponent<SpriteAnimRenderer>();
@@ -42,7 +58,7 @@ void Enemy::Init(Vector pos, wstring key)
 	_shootTimerId = TimeManager::GetInstance().AddTimer([this]() 
 		{
 			shootBullet();
-		}, 2.0f, true);
+		}, 4.0f, true);
 	EnemyType type = EnemyType::Aimed;
 if (key == L"Enemy1")
 	{
@@ -89,10 +105,30 @@ void Enemy::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
 
+	if (_isEntering)
+	{
+		_entryT += deltaTime / ENTRY_DURATION;
+		if (_entryT >= 1.0f)
+		{
+			SetPos(_entryTarget);
+			_isEntering = false;
+		}
+		else
+		{
+			// 2차 베지어 곡선: (1-t)^2 * start + 2(1-t)t * control + t^2 * target
+			float u = 1.0f - _entryT;
+			Vector pos;
+			pos.x = u * u * _entryStart.x + 2.0f * u * _entryT * _entryControl.x + _entryT * _entryT * _entryTarget.x;
+			pos.y = u * u * _entryStart.y + 2.0f * u * _entryT * _entryControl.y + _entryT * _entryT * _entryTarget.y;
+			SetPos(pos);
+		}
+		return;
+	}
+
 	// 좌우로 움직이며 밑으로 내려온다.
 	float x = _moveSpeedX * deltaTime * sinf(_sumRadian);
 	float y = _moveSpeedY * deltaTime;
-	
+
 	Vector pos = GetPos();
 	pos.x += x;
 	pos.y += y;

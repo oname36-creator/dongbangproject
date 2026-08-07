@@ -173,6 +173,8 @@
     <ClInclude Include="Common\Util.h" />
     <ClInclude Include="Client\WorldBG.h" />
     <ClInclude Include="Client\TitleScene.h" />
+    <ClInclude Include="Client\LoadingScene.h" />
+    <ClInclude Include="Client\CharacterSelectScene.h" />
     <ClInclude Include="Client\ResultScene.h" />
     <ClInclude Include="Client\EndingScene.h" />
   </ItemGroup>
@@ -215,6 +217,8 @@
     <ClCompile Include="Common\Util.cpp" />
     <ClCompile Include="Client\WorldBG.cpp" />
     <ClCompile Include="Client\TitleScene.cpp" />
+    <ClCompile Include="Client\LoadingScene.cpp" />
+    <ClCompile Include="Client\CharacterSelectScene.cpp" />
     <ClCompile Include="Client\ResultScene.cpp" />
     <ClCompile Include="Client\EndingScene.cpp" />
   </ItemGroup>

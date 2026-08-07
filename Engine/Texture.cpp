@@ -107,24 +107,29 @@ void Texture::Render(HDC hdc, Vector worldPos, Vector srcPos, BYTE alpha)
 }
 
 
-void Texture::RenderScreen(HDC hdc, Vector screenPos, Vector srcPos)
+void Texture::RenderScreen(HDC hdc, Vector screenPos, Vector srcPos, Vector destSize)
 {
+	int32 destSizeX = (destSize.x > 0) ? (int32)destSize.x : _frameSizeX;
+	int32 destSizeY = (destSize.y > 0) ? (int32)destSize.y : _frameSizeY;
+
 	if (_applyCenter)
 	{
-		screenPos.x -= (_frameSizeX * 0.5f);
-		screenPos.y -= (_frameSizeX * 0.5f);
+		screenPos.x -= (destSizeX * 0.5f);
+		screenPos.y -= (destSizeY * 0.5f);
 	}
 
 	if (_transparent == -1)
 	{
-		::BitBlt(hdc,
+		::StretchBlt(hdc,
 			(int32)screenPos.x,
 			(int32)screenPos.y,
-			_frameSizeX,
-			_frameSizeY,
+			destSizeX,
+			destSizeY,
 			_bitmapHdc,
 			(int32)srcPos.x,
 			(int32)srcPos.y,
+			_frameSizeX,
+			_frameSizeY,
 			SRCCOPY);
 	}
 	else
@@ -132,8 +137,8 @@ void Texture::RenderScreen(HDC hdc, Vector screenPos, Vector srcPos)
 		::TransparentBlt(hdc,
 			(int32)screenPos.x,
 			(int32)screenPos.y,
-			_frameSizeX,
-			_frameSizeY,
+			destSizeX,
+			destSizeY,
 			_bitmapHdc,
 			(int32)srcPos.x,
 			(int32)srcPos.y,
