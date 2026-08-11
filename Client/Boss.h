@@ -12,6 +12,9 @@ enum class BossPatternType
 	Grid,
 	Cross,
 	Random,	// 무작위 방향 난사
+	CircleDelayedAimed,		// 시험용: Circle이되 잠시 날아가다 정지 후 플레이어 조준으로 방향 전환
+	CircleDelayedRandom,	// 시험용: Circle이되 잠시 날아가다 정지 후 무작위 방향으로 전환
+	RandomDelayedRandom,	// 무작위 난사 + 잠시 날아가다 정지 후 다시 무작위 방향으로 전환
 };
 struct TimelineStep
 {
@@ -39,7 +42,12 @@ class Boss : public Airplane
 
 public:
 	void Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp = 100,
-			  float bulletCountMul = 1.0f, float bulletSpeedMul = 1.0f);
+			  float bulletCountMul = 1.0f, float bulletSpeedMul = 1.0f,
+			  int32 spiralArmCount = 2, float spiralRotationSpeed = 10.f, float spiralInterval = 0.1f,
+			  int32 randomShotCount = 8, float randomAccel = 100.f, bool randomAlternateAccel = true,
+			  float fanAngleSpread = 60.f, int32 fanShotCount = 5,
+			  int32 randomDelayedShotCount = 12, float randomDelayedSpeed = 250.f,
+			  float randomDelayedPreStop = 1.0f, float randomDelayedDelay = 0.8f);
 	virtual void Destroy() override;
 
 	virtual void Update(float deltaTime) override;
@@ -75,6 +83,11 @@ private:
 	int32 _telegraphTimerId = -1;
 	float _spiralAngle = 0.f;
 
+	// 보스별로 Spiral 팔 개수/회전 속도/발사 간격을 조절하기 위한 값. 기본값은 기존 동작과 동일.
+	int32 _spiralArmCount = 2;
+	float _spiralRotationSpeed = 10.f;
+	float _spiralInterval = 0.1f;
+
 	// AimedBurst용: 방향을 한 번만 고정해두고, 짧은 간격으로 남은 발수만큼 연사한다.
 	int32 _burstShootTimerId = -1;
 	int32 _burstShotsRemaining = 0;
@@ -99,4 +112,20 @@ private:
 	wstring _baseKey;
 	BossAnimState _animState = BossAnimState::Idle;
 	float _attackPoseTimer = 0.f;
+	bool _randomAccelToggle = false;
+
+	// 보스별로 Random(난사) 탄수/가속값/가감속 번갈아여부를 조절하기 위한 값.
+	int32 _randomShotCount = 8;
+	float _randomAccel = 100.f;
+	bool _randomAlternateAccel = true;
+
+	// 보스별로 Fan 탄막의 부채꼴 각도/탄수를 조절하기 위한 값.
+	float _fanAngleSpread = 60.f;
+	int32 _fanShotCount = 5;
+
+	// RandomDelayedRandom(난사 + 정지 후 재무작위)용 값.
+	int32 _randomDelayedShotCount = 12;
+	float _randomDelayedSpeed = 250.f;
+	float _randomDelayedPreStop = 1.0f;
+	float _randomDelayedDelay = 0.8f;
 };

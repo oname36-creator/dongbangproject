@@ -152,6 +152,9 @@
     <ClInclude Include="Client\Game.h" />
     <ClInclude Include="Client\GameScene.h" />
     <ClInclude Include="Client\DongbangProject.h" />
+    <ClInclude Include="Engine\AudioManager.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="Engine\ImageRenderer.h" />
     <ClInclude Include="Engine\InputManager.h" />
     <ClInclude Include="Engine\ObjectPool.h" />
@@ -180,6 +183,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Engine\Actor.cpp" />
+    <ClCompile Include="Engine\AudioManager.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Client\Airplane.cpp" />
     <ClCompile Include="Client\Background.cpp" />
     <ClCompile Include="Client\Bullet.cpp" />

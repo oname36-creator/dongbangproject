@@ -35,6 +35,7 @@ public:
 		Ready,
 		Playing,
 		Boss,
+		StageResult,
 		Stage2,
 		Stage2Boss,
 		Stage3,
@@ -54,13 +55,16 @@ public:
 	// 씬에서 관리되는 Actor중에 하나 삭제해달라고 요청
 	void DeleteActor(class Actor* actor);
 
-	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f);
+	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
+					   float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
 	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f);
 	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
 	void FireFan(Vector pos,BulletType type,Vector dir,float angleSpread,int32 count,float speed);
-	void FireCircle(Vector pos, BulletType type, int32 count, float speed);
+	void FireCircle(Vector pos, BulletType type, int32 count, float speed,
+					 float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
 	void FireSpiral(Vector pos,BulletType type,int32 count,float speed,float& rotationAngle, float rotationSpeed);
-	void FireRandom(Vector pos, BulletType type, int32 count, float speed);
+	void FireRandom(Vector pos, BulletType type, int32 count, float speed, float accel,
+					 float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
 	void FireHoming(Vector pos, BulletType type, Vector dir, float speed = 500.f, float turnSpeed = 180.f);
 	void FireGrid(Vector origin, BulletType type, Vector dir, int32 raws, int32 cols, float spacingX, float spacingY, float speed);
 	void FireCross(float y, BulletType type, float speed);
@@ -90,6 +94,7 @@ private:
 	void loadResources();
 	void createObjects();
 	void onPlayerDead();	// 플레이어 사망 시 호출: 컨티뉴 가능하면 Continue, 아니면 GameOver로 분기
+	void clearWaveActors();	// 디버그 스테이지 점프(KEY_1/2/3) 시, 이전 스테이지에 남아있던 일반 적/적 탄환 정리
 
 	// actor List / render List 의 동기화를 맞춰주기 위해서, 항상 호출되는 함수
 	void registerActor(Actor* actor);
@@ -176,6 +181,9 @@ private:
 	static constexpr int32 MAX_CONTINUE = 3;
 	bool _continueSelectYes = true;
 	GameSceneState _stateBeforeDeath = GameSceneState::Playing;	// Continue Yes 선택 시 되돌아갈 상태
+
+	// 스테이지 클리어 결과 화면(StageResult)에서 Z를 누르면 이동할 다음 상태
+	GameSceneState _stateAfterResult = GameSceneState::Playing;
 
 	// Stage2 진입 시 텍스처를 교체하기 위해 패럴랙스 배경 두 장을 캐싱해둔다.
 	class Background* _bgLayer1 = nullptr;

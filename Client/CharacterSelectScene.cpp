@@ -8,7 +8,7 @@
 
 namespace
 {
-	constexpr float FLASH_INTERVAL = 0.1f;
+	constexpr float FLASH_INTERVAL = 0.1f;	
 	constexpr float FLASH_DURATION = 0.6f;
 }
 

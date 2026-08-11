@@ -11,6 +11,10 @@
     "BossAttack": { "fileName": "BossAttack.bmp", "transparent": [255, 0, 255], "countX": 5, "countY": 1, "dur": 0.4, "loop": true },
     "Boss2Idle": { "fileName": "Boss2Idle.bmp", "transparent": [255, 0, 255], "countX": 4, "countY": 1, "dur": 1.2, "loop": true },
     "Boss2Move": { "fileName": "Boss2Move.bmp", "transparent": [255, 0, 255], "countX": 2, "countY": 1, "dur": 0.4, "loop": false },
+    "MidBossIdle": { "fileName": "MidBossIdle.bmp", "transparent": [255, 0, 255], "countX": 2, "countY": 1, "dur": 1.2, "loop": true },
+    "MidBossMove": { "fileName": "MidBossMove.bmp", "transparent": [255, 0, 255], "countX": 4, "countY": 1, "dur": 0.4, "loop": false },
+    "Boss3Idle": { "fileName": "Boss3Idle.bmp", "transparent": [255, 0, 255] },
+    "Boss3Move": { "fileName": "Boss3Move.bmp", "transparent": [255, 0, 255], "countX": 3, "countY": 1, "dur": 0.45, "loop": false },
     "PlayerBullet": { "fileName": "PlayerBullet.bmp", "transparent": [255, 0, 255] },
     "PlayerHomingBullet": { "fileName": "PlayerHomingBullet.bmp", "transparent": [255, 0, 255] },
     "PlayerSatellite": { "fileName": "PlayerSatellite.bmp", "transparent": [255, 0, 255] },
@@ -22,6 +26,10 @@
     "FullPowerItem": { "fileName": "FullPowerItem.bmp", "transparent": [255, 0, 255] },
     "ScoreItem": { "fileName": "ScoreItem.bmp", "transparent": [255, 0, 255] },
     "World_BG": { "fileName": "World_BG.bmp" },
-    "Stage2BG": { "fileName": "Stage2BG.bmp" }
+    "Stage2BG": { "fileName": "Stage2BG.bmp" },
+    "StageResultBG": { "fileName": "StageResultBG.bmp" },
+    "Stage3BG": { "fileName": "Stage3BG.bmp" },
+    "Stage3BossBG": { "fileName": "Stage3BossBG.bmp" },
+    "Stage2BossBG": { "fileName": "Stage2BossBG.bmp" }
   }
 }

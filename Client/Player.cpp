@@ -9,6 +9,7 @@
 #include "ColliderCircle.h"
 #include "ResourceManager.h"
 #include "ImageRenderer.h"
+#include "AudioManager.h"
 #include <random>
 
 static random_device rd;
@@ -57,7 +58,7 @@ void Player::Update(float deltaTime)
 
 	}
 	else subSpacing = 30.f;
-	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM))
+	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM) && _boom > 0)
 	{
 		_boom -= 1;
 		Game::GetInstance().GetScene()->BombClearBullets();
@@ -231,8 +232,7 @@ else
 
 
 
-	fs::path hitPath = ResourceManager::GetInstance().GetResourcePath() / L"Hit.wav";
-	::PlaySound(hitPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+	AudioManager::GetInstance().Play(L"Hit");
 
 	// 터지는 이펙트 추가
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());
@@ -250,15 +250,35 @@ void Player::attack()
 		float spacing = 10.f;
 		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
 
-		for(int32 i = 0; i < shotCount; ++i)
+		constexpr float outerAngleDeg = 2.f;   // 양 끝 2발이 벌어지는 각도
+
+		if (shotCount >= 3)
 		{
-			Vector firePos(startX + i * spacing, GetPos().y);
-			Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+			// 가운데(1 ~ shotCount-2번째)는 기존과 동일한 위치에서 그대로 평행 직선으로 나간다.
+			for (int32 i = 1; i < shotCount - 1; ++i)
+			{
+				Vector firePos(startX + i * spacing, GetPos().y);
+				Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0, -1), 500.f);
+			}
+
+			// 양 끝(0번째, 마지막번째)은 같은 위치에서 각도만 벌어져서 나간다.
+			float rad = DegreeToRadian(outerAngleDeg);
+			Vector leftPos(startX, GetPos().y);
+			Vector rightPos(startX + (shotCount - 1) * spacing, GetPos().y);
+			Game::GetInstance().GetScene()->FireStraight(leftPos, BulletType::Player, Vector(-sinf(rad), -cosf(rad)), 500.f);
+			Game::GetInstance().GetScene()->FireStraight(rightPos, BulletType::Player, Vector( sinf(rad), -cosf(rad)), 500.f);
+		}
+		else
+		{
+			for(int32 i = 0; i < shotCount; ++i)
+			{
+				Vector firePos(startX + i * spacing, GetPos().y);
+				Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+			}
 		}
 		_fireCooldown = _fireInterval;
 
-		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
-		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+		AudioManager::GetInstance().Play(L"Fire");
 
 		if(_subFireCooldown <= 0.f && _powerLevel >= 1)
 		{

@@ -26,6 +26,10 @@ namespace fs = std::filesystem;
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
 
+// XAudio2 (다중 재생용)
+#include <xaudio2.h>
+#pragma comment(lib, "xaudio2.lib")
+
 // Json
 #include <fstream>
 #include "Json/nlohmann/json.hpp" // nlohmann/json 헤더 파일

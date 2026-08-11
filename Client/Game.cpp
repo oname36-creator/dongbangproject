@@ -11,6 +11,7 @@
 #include "UIManager.h"
 #include "SceneManager.h"
 #include "LoadingScene.h"
+#include "AudioManager.h"
 
 void Game::Init(HWND hwnd)
 {
@@ -51,6 +52,12 @@ void Game::Init(HWND hwnd)
 	DataManager::GetInstance().Init(currentPath);
 	DataManager::GetInstance().Load();
 
+	// AudioManager 초기화
+	AudioManager::GetInstance().Init(currentPath);
+	AudioManager::GetInstance().LoadSound(L"Fire", L"Fire.wav");
+	AudioManager::GetInstance().LoadSound(L"Hit", L"Hit.wav");
+	AudioManager::GetInstance().LoadSound(L"Explosion", L"Explosion.wav");
+
 	// GameScene 초기화
 	SceneManager::GetInstance().ChangeScene(new LoadingScene());
 
@@ -65,6 +72,7 @@ void Game::Cleanup()
 
 	// 매니저들 각자 정리가 필요한것들은 정리해준다.
 	ResourceManager::GetInstance().Cleanup();
+	AudioManager::GetInstance().Cleanup();
 }
 
 void Game::Update()
@@ -81,6 +89,9 @@ void Game::Update()
 	// 모든 Update가 끝나고 좌표 갱신이 완료된 후, 충돌체크 수행
 	UIManager::GetInstance().Update(TimeManager::GetInstance().GetDT());
 	CollisionManager::GetInstance().Update();
+
+	// 재생이 끝난 소스 보이스 정리
+	AudioManager::GetInstance().Update();
 }
 
 void Game::Render()

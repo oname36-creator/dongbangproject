@@ -26,7 +26,12 @@ namespace
 }
 
 void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
-				 float bulletCountMul, float bulletSpeedMul)
+				 float bulletCountMul, float bulletSpeedMul,
+				 int32 spiralArmCount, float spiralRotationSpeed, float spiralInterval,
+				 int32 randomShotCount, float randomAccel, bool randomAlternateAccel,
+				 float fanAngleSpread, int32 fanShotCount,
+				 int32 randomDelayedShotCount, float randomDelayedSpeed,
+				 float randomDelayedPreStop, float randomDelayedDelay)
 {
 	SetPos(pos);
 
@@ -52,6 +57,18 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	_maxHp = maxHp;
 	_bulletCountMul = bulletCountMul;
 	_bulletSpeedMul = bulletSpeedMul;
+	_spiralArmCount = spiralArmCount;
+	_spiralRotationSpeed = spiralRotationSpeed;
+	_spiralInterval = spiralInterval;
+	_randomShotCount = randomShotCount;
+	_randomAccel = randomAccel;
+	_randomAlternateAccel = randomAlternateAccel;
+	_fanAngleSpread = fanAngleSpread;
+	_fanShotCount = fanShotCount;
+	_randomDelayedShotCount = randomDelayedShotCount;
+	_randomDelayedSpeed = randomDelayedSpeed;
+	_randomDelayedPreStop = randomDelayedPreStop;
+	_randomDelayedDelay = randomDelayedDelay;
 	_hp = maxHp;
 	_curPhaseIndex = 0;
 	_phases = phases;
@@ -68,7 +85,7 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 
 	if (ContainsSpiral(_phases[_curPhaseIndex].timeline))
 	{
-		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet(); }, 0.1f, true);
+		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet(); }, _spiralInterval, true);
 	}
 }
 
@@ -212,7 +229,7 @@ void Boss::transitionToNextPhase()
 	TimeManager::GetInstance().Remove(_spiralShootTimerId);
 	if (ContainsSpiral(_phases[_curPhaseIndex].timeline))
 	{
-		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet();}, 0.1f, true);
+		_spiralShootTimerId = TimeManager::GetInstance().AddTimer([this]() { shootSpiralBullet();}, _spiralInterval, true);
 	}
 }
 
@@ -223,8 +240,8 @@ void Boss::shootBullet(BossPatternType pattern)
 	switch(pattern)
 	{
 		case BossPatternType::Fan :
-			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), 60.f,
-				(int32)(5 * _bulletCountMul), 300.f * _bulletSpeedMul);
+			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), _fanAngleSpread,
+				(int32)(_fanShotCount * _bulletCountMul), 300.f * _bulletSpeedMul);
 			break;
 		case BossPatternType::Circle :
 			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy,
@@ -263,8 +280,28 @@ void Boss::shootBullet(BossPatternType pattern)
 			Game::GetInstance().GetScene()->FireCross(GetPos().y, BulletType::Enemy, 300.f);
 			break;
 		case BossPatternType::Random :
+		{
+			_randomAccelToggle = !_randomAccelToggle;
+			float accel = _randomAlternateAccel ? (_randomAccelToggle ? -10.f : _randomAccel) : _randomAccel;
 			Game::GetInstance().GetScene()->FireRandom(GetPos(), BulletType::Enemy,
-				(int32)(8 * _bulletCountMul), 250.f * _bulletSpeedMul);
+				(int32)(_randomShotCount * _bulletCountMul), 250.f * _bulletSpeedMul, accel);
+			break;
+		}
+		case BossPatternType::CircleDelayedAimed :
+			// 2초 날아가다 1초 정지 후 플레이어 조준으로 전환
+			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy,
+				(int32)(9 * _bulletCountMul), 300.f * _bulletSpeedMul, 2.0f, 1.0f, BulletRedirectMode::Aimed);
+			break;
+		case BossPatternType::CircleDelayedRandom :
+			// 2.5초 날아가다 2초 정지 후 무작위 방향으로 전환
+			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy,
+				(int32)(9 * _bulletCountMul), 300.f * _bulletSpeedMul, 2.5f, 2.0f, BulletRedirectMode::Random);
+			break;
+		case BossPatternType::RandomDelayedRandom :
+			// 무작위 난사 + 잠시 날아가다 정지 후 다시 무작위 방향으로 전환
+			Game::GetInstance().GetScene()->FireRandom(GetPos(), BulletType::Enemy,
+				(int32)(_randomDelayedShotCount * _bulletCountMul), _randomDelayedSpeed * _bulletSpeedMul, 0.f,
+				_randomDelayedPreStop, _randomDelayedDelay, BulletRedirectMode::Random);
 			break;
 	}
 }
@@ -279,7 +316,7 @@ void Boss::shootSpiralBullet()
 		return;
 
 	_attackPoseTimer = 0.3f;
-	scene->FireSpiral(GetPos(), BulletType::Enemy, (int32)(2 * _bulletCountMul), 300.f * _bulletSpeedMul, _spiralAngle, 10.f);
+	scene->FireSpiral(GetPos(), BulletType::Enemy, (int32)(_spiralArmCount * _bulletCountMul), 300.f * _bulletSpeedMul, _spiralAngle, _spiralRotationSpeed);
 }
 
 void Boss::shootAimedBurst()

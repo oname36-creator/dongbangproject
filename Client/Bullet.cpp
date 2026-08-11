@@ -7,12 +7,20 @@
 #include "Game.h"
 #include "GameScene.h"
 #include "Player.h"
+#include <random>
 
-void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed)
+static random_device rd;
+static mt19937 gen(rd());
+
+void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed,  float accel,
+				   float preStopTime, float launchDelay, BulletRedirectMode redirectMode)
 {
 	_type = type;
 	_isHoming = isHoming;
 	_turnSpeed = turnSpeed;
+	_preStopTime = preStopTime;
+	_launchDelay = launchDelay;
+	_redirectMode = redirectMode;
 
 	wstring textureKey;
 	int32 textureIndex = -1;
@@ -22,6 +30,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 		textureKey = L"EnemyBullet";
 		_dir = dir;
 		_moveSpeed = speed;
+		_accel = accel;
 	}
 	else
 	{
@@ -29,6 +38,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 		textureKey = isHoming ? L"PlayerHomingBullet" : L"PlayerBullet";
 		_dir = dir;
 		_moveSpeed = speed;
+		_accel = accel;
 	}
 
 	//_texture = ResourceManager::GetInstance().GetTexture(textureKey);
@@ -45,7 +55,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	}
 
 	renderer->Init(textureKey, textureIndex);
-	renderer->SetAlpha(_type == BulletType::Player ? 180 : 255);
+	renderer->SetAlpha(_type == BulletType::Player ? 120 : 255);
 
 	// texture의 width 만큼 충돌체를 생성한다.
 	//_collider = new ColliderCircle();
@@ -54,7 +64,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	{
 		collider = AddComponent<ColliderCircle>();
 	}
-	collider->Init(this, renderer->GetSizeX()-2);
+	collider->Init(this, renderer->GetSizeX()-3);
 
 	// 플레이어의 총알만, 충돌매니저에 등록한다.
 	collider->SetCheckCell(_type == BulletType::Player);
@@ -66,6 +76,39 @@ void Bullet::Update(float deltaTime)
 {
 	// Component Update 호출을 위해
 	Super::Update(deltaTime);
+
+	if (_preStopTime > 0.f)
+	{
+		// 정지 전까지는 그냥 평소처럼 날아간다 (아래 이동 로직으로 그대로 진행).
+		_preStopTime -= deltaTime;
+	}
+	else if (_launchDelay > 0.f)
+	{
+		_launchDelay -= deltaTime;
+		if (_launchDelay > 0.f)
+		{
+			// 아직 정지 중: 이동/화면밖 삭제 체크 없이 대기만 한다.
+			return;
+		}
+
+		// 정지가 풀리는 순간, 재조준 방식에 따라 방향을 다시 잡는다.
+		if (_redirectMode == BulletRedirectMode::Aimed)
+		{
+			Actor* target = (_type == BulletType::Enemy)
+				? static_cast<Actor*>(Game::GetInstance().GetScene()->GetPlayer())
+				: Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
+			if (target != nullptr)
+			{
+				_dir = target->GetPos() - GetPos();
+				_dir.Normalize();
+			}
+		}
+		else if (_redirectMode == BulletRedirectMode::Random)
+		{
+			float radian = DegreeToRadian(uniform_real_distribution<float>(0.f, 360.f)(gen));
+			_dir = Vector(cosf(radian), sinf(radian));
+		}
+	}
 
 	if (_isHoming)
 	{
@@ -95,7 +138,7 @@ void Bullet::Update(float deltaTime)
 			_dir = Vector(cosf(newAngle), sinf(newAngle));
 		}
 	}
-
+		_moveSpeed = std::clamp(_moveSpeed + _accel * deltaTime, 0.f, 2000.f);
 	Vector pos = GetPos();
 	pos = pos + _dir * _moveSpeed * deltaTime;
 	SetPos(pos);

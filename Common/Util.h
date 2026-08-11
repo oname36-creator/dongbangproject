@@ -9,6 +9,14 @@ enum class BulletType
 	Enemy,
 };
 
+// 정지 후 재발동하는 탄이 풀릴 때 방향을 어떻게 다시 잡을지
+enum class BulletRedirectMode
+{
+	None,	// 스폰 시 정해둔 방향 그대로 (지연만 걸림)
+	Aimed,	// 발동 시점에 플레이어(적 탄) / 가장 가까운 적(플레이어 탄) 조준
+	Random,	// 발동 시점에 무작위 방향으로 재설정
+};
+
 enum class RenderLayer
 {
 	// 아래 순서대로 렌더링이 실행된다.

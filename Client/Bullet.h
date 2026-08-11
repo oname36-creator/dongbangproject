@@ -5,7 +5,8 @@ class Bullet : public Actor // (Actor=GameObject)
 {
 	using Super = Actor;
 public:
-	void Init(BulletType type, Vector dir, float speed, bool isHoming = false, float turnSpeed = 180.f);
+	void Init(BulletType type, Vector dir, float speed, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
+			  float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 
@@ -35,4 +36,9 @@ private:
 	BulletType _type;
 	bool _isHoming = false;
 	float _turnSpeed = 180.f;
+	float _accel = 0.f;
+
+	float _preStopTime = 0.f;
+	float _launchDelay = 0.f;
+	BulletRedirectMode _redirectMode = BulletRedirectMode::None;
 };

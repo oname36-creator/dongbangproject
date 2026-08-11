@@ -22,7 +22,7 @@ class Enemy : public Airplane
 	using Super = Airplane;
 
 public:
-	void Init(Vector pos, wstring key, EntryDirection entryDir);
+	void Init(Vector pos, wstring key, EntryDirection entryDir, float hpMultiplier = 1.f);
 	virtual void Destroy() override;
 
 	virtual void Update(float deltaTime) override;

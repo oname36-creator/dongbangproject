@@ -9,12 +9,13 @@
 #include "colliderCircle.h"
 #include "ResourceManager.h"
 #include "SpriteRenderer.h"
+#include "AudioManager.h"
 #include <random>
 
 static random_device rd;
 static mt19937 gen(rd());
 
-void Enemy::Init(Vector pos, wstring key, EntryDirection entryDir)
+void Enemy::Init(Vector pos, wstring key, EntryDirection entryDir, float hpMultiplier)
 {
 
 	_isDead = false;
@@ -87,6 +88,8 @@ else
 	assert(false && "Enemy::Init - unknown enemy key");
 	}
 _type = type;
+
+_hp = (int32)(_hp * hpMultiplier);
 
 
 	
@@ -176,27 +179,26 @@ void Enemy::OnEnter(Actor* other) // other : Player
 			Destroy();
 			Game::GetInstance().GetScene()->CreateEffect(GetPos());
 
-			fs::path explosionPath = ResourceManager::GetInstance().GetResourcePath() / L"Explosion.wav";
-			::PlaySound(explosionPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+			AudioManager::GetInstance().Play(L"Explosion");
 
 			// 점수 증가
 			Game::GetInstance().GetScene()->AddScore(100);
 
-			uniform_int_distribution<int> randitem(1,100);
+			uniform_int_distribution<int> randitem(1,1000);
 			int32 randnum = randitem (gen);
 
-			if(randnum <= 40)
+			if(randnum <= 400)
 			{
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power );
 			}
 
-			else if(randnum > 40 && randnum <= 80 )
+			else if(randnum > 400 && randnum <= 800 )
 			{
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Score );
 			}
-			else if(randnum > 80 && randnum <= 85 )
+			else if(randnum > 800 && randnum <= 850 )
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power , 8);
-			else if(randnum == 86)
+			else if(randnum == 851)
 				Game::GetInstance().GetScene()->SpawnItem(GetPos(),ItemKind::Power , 128);
 			}
 			// 파티클 재생

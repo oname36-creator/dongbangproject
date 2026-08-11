@@ -3,9 +3,12 @@
 #include "InputManager.h"
 #include "SceneManager.h"
 #include "TitleScene.h"
+#include "ResourceManager.h"
+#include "Texture.h"
 
 void EndingScene::Init()
 {
+	ResourceManager::GetInstance().LoadTexture(L"StageResultBG", L"StageResultBG.bmp", -1);
 }
 
 void EndingScene::Update(float deltaTime)
@@ -20,6 +23,12 @@ void EndingScene::Render(HDC hdc)
 {
 	RECT rect{ 0, 0, GWindowSizeX, GWinSizeY };
 	FillRect(hdc, &rect, (HBRUSH)GetStockObject(BLACK_BRUSH));
+
+	Texture* bg = ResourceManager::GetInstance().GetTexture(L"StageResultBG");
+	if (bg)
+	{
+		bg->RenderScreen(hdc, Vector(GWindowSizeX / 2.0f, GWinSizeY / 2.0f), Vector(0, 0), Vector((float)GWindowSizeX, (float)GWinSizeY));
+	}
 
 	const wchar_t* congrats = L"Congratulations!";
 	::TextOut(hdc, GWindowSizeX / 2 - 70, GWinSizeY / 2 - 50, congrats, static_cast<int32>(wcslen(congrats)));

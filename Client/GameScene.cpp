@@ -6,6 +6,7 @@
 #include "Boss.h"
 #include "Background.h"
 #include "ResourceManager.h"
+#include "Texture.h"
 #include "TimeManager.h"
 #include "Bullet.h"
 #include "Item.h"
@@ -38,6 +39,7 @@ struct GameScene::WaveEntry
 	Vector pos;         // 첫 적이 등장할 위치
 	int32 count;        // 가로로 나열할 개수
 	EntryDirection entryDir = EntryDirection::Top;
+	float hpMultiplier =1.f;
 };
 
 static const GameScene::WaveEntry g_waveTable[] =
@@ -52,10 +54,10 @@ static const GameScene::WaveEntry g_waveTable[] =
 // time 값은 g_waveTable과 마찬가지로 "Stage2 시작 후 경과 시간" 기준이다.
 static const GameScene::WaveEntry g_stage2WaveTable[] =
 {
-	{ 2.0f,  L"Enemy2", {50, 130}, 8 },
-	{ 8.0f,  L"Enemy1", {50, 130}, 8 },
-	{ 14.0f, L"Enemy4", {50, 130}, 8 },
-	{ 20.0f, L"Enemy3", {50, 130}, 8 },
+	{ 2.0f,  L"Enemy2", {50, 130}, 8, EntryDirection::Top, 4.f },
+	{ 8.0f,  L"Enemy1", {50, 130}, 8, EntryDirection::Top, 4.f },
+	{ 14.0f, L"Enemy4", {50, 130}, 8, EntryDirection::Top, 4.f },
+	{ 20.0f, L"Enemy3", {50, 130}, 8, EntryDirection::Top, 4.f },
 };
 
 // Stage 3 웨이브 테이블. 원작 동방 스테이지 구조(잡몹 웨이브 -> 중간보스 -> 잡몹 웨이브 -> 스테이지 보스)를
@@ -63,16 +65,16 @@ static const GameScene::WaveEntry g_stage2WaveTable[] =
 // (Stage1->Stage2 전환 시 _stageElapsedTime을 리셋하는 것과 같은 이유).
 static const GameScene::WaveEntry g_stage3Wave1Table[] =
 {
-	{ 2.0f,  L"Enemy1", {50, 130}, 8 },
-	{ 8.0f,  L"Enemy3", {50, 130}, 8 },
-	{ 14.0f, L"Enemy2", {50, 130}, 8 },
+	{ 2.0f,  L"Enemy1", {50, 130}, 8, EntryDirection::Top, 8.f },
+	{ 8.0f,  L"Enemy3", {50, 130}, 8, EntryDirection::Top, 8.f },
+	{ 14.0f, L"Enemy2", {50, 130}, 8, EntryDirection::Top, 8.f },
 };
 
 static const GameScene::WaveEntry g_stage3Wave2Table[] =
 {
-	{ 2.0f,  L"Enemy4", {50, 130}, 8 },
-	{ 8.0f,  L"Enemy1", {50, 130}, 8 },
-	{ 14.0f, L"Enemy3", {50, 130}, 8 },
+	{ 2.0f,  L"Enemy4", {50, 130}, 8, EntryDirection::Top, 8.f },
+	{ 8.0f,  L"Enemy1", {50, 130}, 8, EntryDirection::Top, 8.f },
+	{ 14.0f, L"Enemy3", {50, 130}, 8, EntryDirection::Top, 8.f },
 };
 
 // Stage1 보스 페이즈: 기존 Fan -> Circle -> Spiral 순서 그대로.
@@ -89,31 +91,44 @@ static const vector<BossPhase> g_stage1BossPhases =
 // Stage2 보스 페이즈: 조준 라인탄 -> 무작위 난사 -> 원형탄.
 static const vector<BossPhase> g_stage2BossPhases =
 {
-	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 200 },
+	{
+		{
+			{ 0.f, BossPatternType::AimedBurst }, 
+			{ 0.f, BossPatternType::Circle } , 
+			{ 1.f, BossPatternType::Circle } , 
+		}, 2.0f, 400 
+	},
 	{
 		{
 			{ 0.0f, BossPatternType::Random }, { 0.3f, BossPatternType::Random },
 			{ 0.6f, BossPatternType::Random }, { 0.9f, BossPatternType::Random },
 			{ 1.2f, BossPatternType::Random }, { 1.5f, BossPatternType::Random },
 			{ 1.8f, BossPatternType::Random }, { 2.1f, BossPatternType::Random },
-		}, 2.5f, 100
+		}, 2.5f, 200
 	},
-	{ { { 0.f, BossPatternType::Circle } }, 1.0f, 0 },
+	{
+		{
+			{ 0.f, BossPatternType::CircleDelayedAimed },
+			{ 0.5f, BossPatternType::CircleDelayedRandom },
+		}, 1.0f, 0
+	},
 };
 
-// Stage3 중간보스 페이즈: 최종보스보다 약하게 페이즈 2개만.
+// Stage3 중간보스 페이즈: 최종보스보다 약하게 페이즈 3개.
+// 가운데 Spiral 페이즈는 팔 1개(_spiralArmCount=1)로 촘촘하고 빠르게 도는 전용 세팅을 쓴다 (Boss::Init 참고).
 static const vector<BossPhase> g_stage3MidBossPhases =
 {
-	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 60 },
-	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 0 },
+	{ { { 0.f, BossPatternType::AimedBurst }, { 0.f, BossPatternType::Random } }, 1.0f, 320 },
+	{ { { 0.f, BossPatternType::Spiral } }, 1.0f, 160 },
+	{ { { 0.f, BossPatternType::Fan }, { 0.f, BossPatternType::RandomDelayedRandom } }, 1.0f, 0 },
 };
 
 // Stage3 최종보스 페이즈: 4페이즈 (기획서 3장 "최종 보스 4페이즈").
 static const vector<BossPhase> g_stage3BossPhases =
 {
-	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 150 },
-	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 100 },
-	{ { { 0.f, BossPatternType::Telegraph } }, 2.5f, 50 },
+	{ { { 0.f, BossPatternType::Fan } }, 1.0f, 600 },
+	{ { { 0.f, BossPatternType::AimedBurst } }, 1.0f, 400 },
+	{ { { 0.f, BossPatternType::Telegraph } }, 2.5f, 200 },
 	{ { { 0.f, BossPatternType::Spiral }, { 0.f, BossPatternType::Cross } }, 1.0f, 0 },
 };
 
@@ -136,10 +151,10 @@ void GameScene::Init()
 	// Scene에 필요한 리소스 로드
 	loadResources();
 
-	// 객체생성전에 미리 풀을 생성해둔다. (2주차 원형/나선탄 대비 1000개로 상향)
-	_bulletPool.Init(1000);
+	// 객체생성전에 미리 풀을 생성해둔다. (정지 후 재발동 탄은 화면 밖으로 안 나가도 오래 살아있어서 2000개로 상향)
+	_bulletPool.Init(3000);
 	_enemyPool.Init(1000);
-	_itemPool.Init(100);
+	_itemPool.Init(2000);
 
 	// Scene에 필요한 객체 생성
 	createObjects();
@@ -243,6 +258,7 @@ if(_isPaused)
 		if (_boss) _boss->Destroy();
 		_bossSpawned = false;
 		_boss = nullptr;
+		clearWaveActors();
 		_state = GameSceneState::Playing;
 		_stageElapsedTime = 0.f;
 		_nextWaveIndex = 0;
@@ -254,6 +270,7 @@ if(_isPaused)
 		if (_boss) _boss->Destroy();
 		_bossSpawned = false;
 		_boss = nullptr;
+		clearWaveActors();
 		_state = GameSceneState::Stage2;
 		_stageElapsedTime = 0.f;
 		_nextStage2WaveIndex = 0;
@@ -265,12 +282,13 @@ if(_isPaused)
 		if (_boss) _boss->Destroy();
 		_bossSpawned = false;
 		_boss = nullptr;
+		clearWaveActors();
 		_state = GameSceneState::Stage3;
 		_stageElapsedTime = 0.f;
 		_nextStage3WaveIndex = 0;
 		_stage3Wave2 = false;
-		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG", 15.f, 0.f);
-		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG", 15.f, 0.f);
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage3BG", 0.f, 20.f);
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage3BG", 0.f, 20.f);
 	}
 
 
@@ -315,12 +333,20 @@ if(_isPaused)
 			{
 				// Stage1의 _stageElapsedTime을 그대로 물려받으면 g_stage2WaveTable의
 				// time 값과 어긋나므로 Stage2 시작 시점 기준으로 리셋한다.
+				BombClearBullets();
 				_stageElapsedTime = 0.f;
 				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BG", 15.f, 0.f);
 				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BG", 15.f, 0.f);
-				_state = GameSceneState::Stage2;
+				_stateAfterResult = GameSceneState::Stage2;
+				_state = GameSceneState::StageResult;
 			}
 
+			break;
+		case GameSceneState :: StageResult :
+			if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
+			{
+				_state = _stateAfterResult;
+			}
 			break;
 		case GameSceneState :: Stage2 :
 			_stageElapsedTime += deltaTime;
@@ -346,10 +372,13 @@ if(_isPaused)
 			{
 				Boss* boss = new Boss();
 				// 2스테이지 보스도 탄수 2배 / 탄속 절반
-				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss2", g_stage2BossPhases, 300, 2.0f, 0.5f);
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss2", g_stage2BossPhases, 600, 2.0f, 0.5f);
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
+				// 스크롤 없는 고정 배경으로 교체 (화면 크기에 맞춰 미리 늘려둔 이미지)
+				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage2BossBG", 0.f, 0.f);
+				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage2BossBG", 0.f, 0.f);
 			}
 			else if (_player == nullptr)
 			{
@@ -357,11 +386,17 @@ if(_isPaused)
 			}
 			else if (_boss == nullptr)
 			{
+				BombClearBullets();
+
 				// Stage3도 Stage1->Stage2 전환과 마찬가지로 경과시간/웨이브 인덱스를 리셋한다.
 				_stageElapsedTime = 0.f;
 				_nextStage3WaveIndex = 0;
 				_stage3Wave2 = false;
-				_state = GameSceneState :: Stage3;
+				// 웨이브/중간보스 구간은 달 없는 문양 배경만 사용 (본보스 등장 시에만 달 배경으로 교체)
+				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage3BG", 0.f, 20.f);
+				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage3BG", 0.f, 20.f);
+				_stateAfterResult = GameSceneState::Stage3;
+				_state = GameSceneState::StageResult;
 			}
 			break;
 		case GameSceneState :: Stage3 :
@@ -407,7 +442,12 @@ if(_isPaused)
 			if (!_bossSpawned)
 			{
 				Boss* boss = new Boss();
-				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage3MidBossPhases, 130);
+				// Spiral: 팔 1개(한 줄기), 0.0133초 간격으로 촘촘하게(탄수 1.5배), 15도씩 회전
+				// Random(1페이즈): 150발, 가감속 번갈아 없이 항상 가속(100.f)
+				// Fan(3페이즈): 180도, 10발(2배) / RandomDelayedRandom(3페이즈): 기본값 그대로
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"MidBoss", g_stage3MidBossPhases, 520,
+						   1.0f, 1.0f, 1, 15.f, 0.0133f, 150, 100.f, false,
+						   180.f, 10);
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
@@ -418,6 +458,8 @@ if(_isPaused)
 			}
 			else if (_boss == nullptr)
 			{
+				BombClearBullets();
+
 				// 중간보스 격파 -> 후반부 웨이브 재생을 위해 경과시간/인덱스를 리셋한다.
 				_stageElapsedTime = 0.f;
 				_nextStage3WaveIndex = 0;
@@ -429,10 +471,13 @@ if(_isPaused)
 			if (!_bossSpawned)
 			{
 				Boss* boss = new Boss();
-				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss", g_stage3BossPhases, 250);
+				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"Boss3", g_stage3BossPhases, 1000);
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
+				// 본보스 등장 시에만 화면 꽉 채운 붉은 달 고정 배경으로 교체
+				if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage3BossBG", 0.f, 0.f);
+				if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage3BossBG", 0.f, 0.f);
 			}
 			else if (_player == nullptr)
 			{
@@ -440,6 +485,8 @@ if(_isPaused)
 			}
 			else if (_boss == nullptr)
 			{
+				BombClearBullets();
+
 				_stageElapsedTime = 0.f;
 				_state = GameSceneState :: Clear;
 			}
@@ -516,20 +563,6 @@ if(_isPaused)
 		}
 	}
 
-	// 추가가 필요한 애들은 추가
-	// 1번 방식 : 매번 push_back 할때마다 비용 지불
-	//for (auto iter : _reservedAdd)
-	//{
-	//	// vector
-	//	// capacity, size
-	//	// 새로 원소를 집어넣을떄 capacity 부족시, 메모리 추가 할당
-	//	_actors.push_back(iter);
-	//}
-
-	// 2번 방식 :
-	// 여긴, reserverdAdd 에 10개가 있을경우
-	// vector를 한번에 10개 늘리고 복사해와서, 재할당이 1번 일어난다.
-	//_actors.insert(_actors.end(), _reservedAdd.begin(), _reservedAdd.end());
 
 	//-> 미리 한번만 할당해놓고, 복사하기
 	_actors.reserve(_actors.size() + _reservedAdd.size()); // 개수X, Capacity(메모리)
@@ -544,9 +577,6 @@ if(_isPaused)
 	_reservedAdd.clear();
 	_reservedRemove.clear();
 
-	// 그리드 갱신 : 초기화 -> 재갱신 이방식이 마음에 안든다면,
-	// Actor의 위치가 변경될때마다 Grid 의 위치를 갱신해주는 방식을 하면 된다.
-	// 즉, 아래 코드는 다 사라지고 Actor가 Scene에게 요청을 해서, Grid 갱신한다.
 	{
 		// 모든 Actor의 최신화된 좌표 기준으로 Grid 갱신
 		// 이전프레임에 있었던 Grid 정보는 초기화
@@ -604,6 +634,20 @@ void GameScene::Render(HDC hdc)
 }
 
 
+	if (_state == GameSceneState::StageResult)
+	{
+		Texture* bg = ResourceManager::GetInstance().GetTexture(L"StageResultBG");
+		if (bg)
+		{
+			bg->RenderScreen(hdc, Vector(GWinSizeX / 2.0f, GWinSizeY / 2.0f), Vector(0, 0), Vector((float)GWinSizeX, (float)GWinSizeY));
+		}
+
+		wstring msg = std::format(L"Stage Clear!  Score: {}", _score);
+		wstring prompt = L"Press Z to continue";
+		::TextOut(hdc, GWinSizeX / 2 - 60, GWinSizeY / 2 - 20, msg.c_str(), (int32)msg.size());
+		::TextOut(hdc, GWinSizeX / 2 - 60, GWinSizeY / 2 + 10, prompt.c_str(), (int32)prompt.size());
+	}
+
 	if (_state == GameSceneState::Continue)
 	{
 		wstring msg = L"Continue?";
@@ -637,16 +681,17 @@ void GameScene::SpawnItem(Vector pos, ItemKind kind, int32 powerValue, bool burs
 	_reservedAdd.push_back(item);
 }
 
-void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed)
+void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed, float accel,
+							  float preStopTime, float launchDelay, BulletRedirectMode redirectMode)
 {
-	
+
 	Bullet* bullet = _bulletPool.Acquire(); // new Bullet();
 
 
 	if(bullet == nullptr)
 		return;
 
-	bullet->Init(type, dir, speed, isHoming, turnSpeed);
+	bullet->Init(type, dir, speed, isHoming, turnSpeed, accel, preStopTime, launchDelay, redirectMode);
 	bullet->SetPos(pos);
 
 	_reservedAdd.push_back(bullet);
@@ -664,13 +709,14 @@ void GameScene::FireAimed(Vector pos, BulletType type,Vector targetPos, float sp
 	CreateBullet(pos, type, dir, speed);
 }
 
-void GameScene::FireCircle(Vector pos, BulletType type, int32 count, float speed)
+void GameScene::FireCircle(Vector pos, BulletType type, int32 count, float speed,
+							float preStopTime, float launchDelay, BulletRedirectMode redirectMode)
 {
-	
+
 	for(int32 i = 0; i < count; ++i)
 	{
 		float radian = DegreeToRadian(i*(360.f/count));
-		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
+		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed, false, 180.f, 0.f, preStopTime, launchDelay, redirectMode);
 	}
 }
 
@@ -697,14 +743,15 @@ void GameScene::FireFan(Vector pos, BulletType type, Vector dir, float anglespre
 	}
 }
 
-void GameScene::FireRandom(Vector pos, BulletType type, int32 count, float speed)
+void GameScene::FireRandom(Vector pos, BulletType type, int32 count, float speed, float accel,
+							float preStopTime, float launchDelay, BulletRedirectMode redirectMode)
 {
 	uniform_real_distribution<float> randir(0, 360);
 	for(int32 i = 0; i < count; ++i)
 	{
 		float random_dir = randir(gen);
 		float radian = DegreeToRadian(random_dir);
-		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed);
+		CreateBullet(pos, type, Vector(cosf(radian), sinf(radian)), speed, false, 180.f, accel, preStopTime, launchDelay, redirectMode);
 	}
 }
 
@@ -781,6 +828,18 @@ void GameScene::CreateEffect(Vector pos)
 	effect->SetPos(pos);
 
 	_reservedAdd.push_back(effect);
+}
+
+void GameScene::clearWaveActors()
+{
+	// 일반 적(요정)들을 전부 삭제 예약. 보스는 각 호출부(KEY_1/2/3 핸들러)가 별도로 처리한다.
+	const vector<Actor*>& enemies = GetRenderList(RenderLayer::Enemy);
+	for (Actor* actor : enemies)
+	{
+		actor->Destroy();
+	}
+
+	ClearEnemyBullets();
 }
 
 void GameScene::ClearEnemyBullets()
@@ -1001,7 +1060,7 @@ void GameScene::SpawnWave(const WaveEntry& wave)
 		// 왼쪽 자리는 오른쪽 상단에서, 오른쪽 자리는 왼쪽 상단에서 나와 서로 가로지르며 들어온다.
 		EntryDirection entryDir = (i < half) ? EntryDirection::Right : EntryDirection::Left;
 
-		enemy->Init(target, wave.enemyKey, entryDir);
+		enemy->Init(target, wave.enemyKey, entryDir, wave.hpMultiplier);
 		_reservedAdd.push_back(enemy);
 	}
 }
