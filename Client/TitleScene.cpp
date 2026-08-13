@@ -5,16 +5,48 @@
 #include "CharacterSelectScene.h"
 #include "ResourceManager.h"
 #include "Texture.h"
+#include "AudioManager.h"
+#include "SaveManager.h"
+
+namespace
+{
+	const wchar_t* GetMenuLabel(TitleMenuItem item)
+	{
+		switch (item)
+		{
+			case TitleMenuItem::CharacterSelect: return L"캐릭터 선택";
+			case TitleMenuItem::ExtraStage: return L"엑스트라";
+			case TitleMenuItem::Settings: return L"설정";
+			case TitleMenuItem::Exit: return L"게임 종료";
+		}
+		return L"";
+	}
+}
 
 void TitleScene::Init()
 {
 	ResourceManager::GetInstance().LoadTexture(L"TitleLogo", L"TitleLogo.bmp", -1);
+
+	_menuItems.clear();
+	_menuItems.push_back(TitleMenuItem::CharacterSelect);
+	if (SaveManager::GetInstance().IsExtraUnlocked())
+	{
+		_menuItems.push_back(TitleMenuItem::ExtraStage);
+	}
+	_menuItems.push_back(TitleMenuItem::Settings);
+	_menuItems.push_back(TitleMenuItem::Exit);
+	_selectedIndex = 0;
 
 	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
 	AddFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
 	_titleFont = CreateFont(-44, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 		DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
+	_menuFont = CreateFont(-28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+		DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
+
+	AudioManager::GetInstance().PlayBGM(L"TitleBGM");
 }
 
 void TitleScene::Cleanup()
@@ -24,9 +56,16 @@ void TitleScene::Cleanup()
 		DeleteObject(_titleFont);
 		_titleFont = nullptr;
 	}
+	if (_menuFont)
+	{
+		DeleteObject(_menuFont);
+		_menuFont = nullptr;
+	}
 
 	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
 	RemoveFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
+
+	AudioManager::GetInstance().StopBGM();
 }
 
 void TitleScene::Update(float deltaTime)
@@ -36,36 +75,31 @@ void TitleScene::Update(float deltaTime)
 		if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
 		{
 			_menuOpen = true;
+			AudioManager::GetInstance().Play(L"TitleSelect");
 		}
 		return;
 	}
 
 	if (InputManager::GetInstance().GetButtonDown(KeyType::Up))
 	{
-		int32 index = static_cast<int32>(_selected) - 1;
-		if (index < 0)
-		{
-			index = static_cast<int32>(TitleMenuItem::Count) - 1;
-		}
-		_selected = static_cast<TitleMenuItem>(index);
+		_selectedIndex = (_selectedIndex - 1 + (int32)_menuItems.size()) % (int32)_menuItems.size();
 	}
 
 	if (InputManager::GetInstance().GetButtonDown(KeyType::Down))
 	{
-		int32 index = static_cast<int32>(_selected) + 1;
-		if (index >= static_cast<int32>(TitleMenuItem::Count))
-		{
-			index = 0;
-		}
-		_selected = static_cast<TitleMenuItem>(index);
+		_selectedIndex = (_selectedIndex + 1) % (int32)_menuItems.size();
 	}
 
 	if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
 	{
-		switch (_selected)
+		AudioManager::GetInstance().Play(L"TitleSelect");
+		switch (_menuItems[_selectedIndex])
 		{
 		case TitleMenuItem::CharacterSelect:
 			SceneManager::GetInstance().ChangeScene(new CharacterSelectScene());
+			break;
+		case TitleMenuItem::ExtraStage:
+			// TODO: 엑스트라 스테이지 콘텐츠가 아직 없어 자리표시만 유지 (선택해도 동작 없음)
 			break;
 		case TitleMenuItem::Settings:
 			// 사운드 시스템이 아직 없어 자리표시만 유지 (선택해도 동작 없음)
@@ -122,14 +156,25 @@ void TitleScene::Render(HDC hdc)
 	}
 	else
 	{
-		const wchar_t* menuLabels[] = { L"캐릭터 선택", L"설정", L"게임 종료" };
 		constexpr int32 menuStartX = GWindowSizeX - 220;
-		constexpr int32 menuStartY = 250;
+		constexpr int32 menuStartY = 300;
 		constexpr int32 menuLineHeight = 40;
-		for (int32 i = 0; i < static_cast<int32>(TitleMenuItem::Count); ++i)
+
+		HFONT prevMenuFont = _menuFont ? (HFONT)SelectObject(hdc, _menuFont) : nullptr;
+		COLORREF prevMenuColor = SetTextColor(hdc, RGB(255, 255, 255));
+		int32 prevMenuBkMode = SetBkMode(hdc, TRANSPARENT);
+
+		for (int32 i = 0; i < (int32)_menuItems.size(); ++i)
 		{
-			wstring line = (static_cast<int32>(_selected) == i ? L"> " : L"  ") + wstring(menuLabels[i]);
+			wstring line = (_selectedIndex == i ? L"> " : L"  ") + wstring(GetMenuLabel(_menuItems[i]));
 			::TextOut(hdc, menuStartX, menuStartY + i * menuLineHeight, line.c_str(), static_cast<int32>(line.size()));
+		}
+
+		SetTextColor(hdc, prevMenuColor);
+		SetBkMode(hdc, prevMenuBkMode);
+		if (prevMenuFont)
+		{
+			SelectObject(hdc, prevMenuFont);
 		}
 	}
 }

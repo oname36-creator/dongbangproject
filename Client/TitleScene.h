@@ -5,12 +5,12 @@
 enum class TitleMenuItem
 {
 	CharacterSelect,
+	ExtraStage,	// 게임을 1번 이상 클리어해야 메뉴에 나타난다 (SaveManager::IsExtraUnlocked)
 	Settings,
-	Exit,
-	Count
+	Exit
 };
 
-// 타이틀 화면. 배경 + 메뉴(캐릭터 선택/설정/종료) + Z 입력으로 확정.
+// 타이틀 화면. 배경 + 메뉴(캐릭터 선택/[엑스트라]/설정/종료) + Z 입력으로 확정.
 class TitleScene : public Scene
 {
 public:
@@ -21,6 +21,10 @@ public:
 
 private:
 	HFONT _titleFont = nullptr;
-	TitleMenuItem _selected = TitleMenuItem::CharacterSelect;
+	HFONT _menuFont = nullptr;
+
+	// 언락 상태에 따라 필터링된, 실제로 화면에 보이는 메뉴 목록.
+	vector<TitleMenuItem> _menuItems;
+	int32 _selectedIndex = 0;
 	bool _menuOpen = false;
 };

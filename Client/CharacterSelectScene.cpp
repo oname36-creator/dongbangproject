@@ -5,6 +5,7 @@
 #include "GameScene.h"
 #include "ResourceManager.h"
 #include "Texture.h"
+#include "AudioManager.h"
 
 namespace
 {
@@ -26,6 +27,7 @@ void CharacterSelectScene::Update(float deltaTime)
 		if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
 		{
 			_confirmed = true;
+			AudioManager::GetInstance().Play(L"TitleSelect");
 		}
 		return;
 	}
