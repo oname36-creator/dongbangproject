@@ -416,3 +416,7 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,visualstudiocode
+
+### Project specific ###
+# 런타임에 생성되는 로컬 플레이어 저장 데이터 (SaveManager)
+Resources/Save/

@@ -17,6 +17,7 @@ enum class BossPatternType
 	RandomDelayedRandom,	// 무작위 난사 + 잠시 날아가다 정지 후 다시 무작위 방향으로 전환
 	AimedSpread,
 	ConvergingBurst,	// 한 방향으로 3발이 각기 다른 속도로 동시에 나갔다가, 목표 속도로 수렴해서 나란히 정렬된다.
+	BorderAimedBurst,	// 마법진 6개가 화면 테두리를 따라 돌면서 쉬지 않고 조준탄을 쏜다(실험용).
 };
 struct TimelineStep
 {
@@ -88,6 +89,11 @@ private:
 	void shootSpreadBullet();
 	void shootCrossBullet();
 	void shootConvergingBurst();
+	void shootBorderAimedBurst();
+	void initBorderMarkers();
+	void updateBorderMarkers(float deltaTime);
+	Vector getBorderCornerPos(int32 cornerIndex) const;
+	Vector getBorderMarkerPos(int32 markerIndex) const;
 
 private:
 	int32 _hp = 0;
@@ -201,4 +207,23 @@ private:
 	float _convergingSpeedSpread = 150.f;
 	float _convergingInterval = 0.6f;
 	float _convergingAngleSpread = 10.f;	// 3발이 같은 방향이 아니라 이 각도만큼씩 벌어져서 나간다.
+
+	// BorderAimedBurst(실험용): 마법진 6개. 그룹A(1,2,3)는 (0,0)에서, 그룹B(4,5,6)는 대각선 반대
+	// 코너에서 시작. 1/4번은 플레이어를 조준하고 나머지는 화면 중앙을 조준한다.
+	// 각자 완전히 독립적으로 코너에 도착할 때마다 시계/반시계 방향을 랜덤으로 고르며 테두리를 따라 이동
+	// (인접 코너는 항상 X축 또는 Y축 중 한쪽만 다르므로, 결과적으로 이동 축도 랜덤이 된다).
+	// 3번/6번만 시작 시점 타이머를 0.2초 앞당겨서 리더와 살짝 어긋나 보이게 한다(진짜로 경로를 따라가진 않음).
+	struct BorderMarker
+	{
+		int32 fromCorner = 0;
+		int32 toCorner = 1;
+		float segmentTime = 0.f;
+		bool aimAtPlayer = false;
+	};
+	BorderMarker _borderMarkers[6];
+	int32 _borderBurstTimerId = -1;
+	float _borderBurstInterval = 0.3f;
+	float _borderBulletSpeed = 100.f;
+	float _borderGlideDuration = 1.5f;
+	float _borderPauseDuration = 1.0f;
 };

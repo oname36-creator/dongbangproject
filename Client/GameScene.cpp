@@ -163,7 +163,9 @@ static const vector<BossPhase> g_extraBossPhases =
 	{ { { 0.f, BossPatternType::Spiral }, { 1.5f, BossPatternType::AimedSpread }, { 3.0f, BossPatternType::Telegraph },
 		{ 4.5f, BossPatternType::AimedSpread } }, 6.0f, 4500 },
 	// 2페이즈: ConvergingBurst — 플레이어 방향으로 3발이 느리게/보통/빠르게 동시에 나갔다가 같은 속도로 수렴해서 정렬된다.
-	{ { { 0.f, BossPatternType::ConvergingBurst } }, 1.0f, 0 },
+	{ { { 0.f, BossPatternType::ConvergingBurst } }, 1.0f, 4000 },
+	// 3페이즈(실험용): 마법진 6개가 화면 테두리를 돌면서 조준탄을 계속 쏜다.
+	{ { { 0.f, BossPatternType::BorderAimedBurst } }, 1.0f, 0 },
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
@@ -682,7 +684,7 @@ if(_isPaused)
 			{
 				Boss* boss = new Boss();
 				boss->Init(Vector(GWinSizeX * 0.5f, -50.f), L"ExtraBoss", g_extraBossPhases, 5000, 1.0f, 0.5f,	// bulletSpeedMul 0.5: 1페이즈(Spiral/AimedSpread/Telegraph) 속도 절반
-						   3, 25.f, 0.05f,
+						   2, 25.f, 0.1f,
 						   8, 100.f, true,
 						   60.f, 5,
 						   12, 250.f, 1.0f, 0.8f,

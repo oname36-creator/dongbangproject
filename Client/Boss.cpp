@@ -46,6 +46,17 @@ namespace
 		}
 		return false;
 	}
+
+	// BorderAimedBurst도 마찬가지.
+	bool ContainsBorderAimedBurst(const vector<TimelineStep>& timeline)
+	{
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::BorderAimedBurst)
+				return true;
+		}
+		return false;
+	}
 }
 
 void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
@@ -156,6 +167,11 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	{
 		_convergingBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootConvergingBurst(); }, _convergingInterval, true);
 	}
+	if (ContainsBorderAimedBurst(_phases[_curPhaseIndex].timeline))
+	{
+		initBorderMarkers();
+		_borderBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootBorderAimedBurst(); }, _borderBurstInterval, true);
+	}
 }
 
 void Boss::Destroy()
@@ -168,6 +184,7 @@ void Boss::Destroy()
 	TimeManager::GetInstance().Remove(_spiralShootTimerId);
 	TimeManager::GetInstance().Remove(_crossShootTimerId);
 	TimeManager::GetInstance().Remove(_convergingBurstTimerId);
+	TimeManager::GetInstance().Remove(_borderBurstTimerId);
 	TimeManager::GetInstance().Remove(_telegraphTimerId);
 	TimeManager::GetInstance().Remove(_burstShootTimerId);
 	TimeManager::GetInstance().Remove(_spreadShootTimerId);
@@ -176,6 +193,11 @@ void Boss::Destroy()
 void Boss::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
+
+	if (_borderBurstTimerId != -1)
+	{
+		updateBorderMarkers(deltaTime);
+	}
 
 	// 이 페이즈 동안엔 랜덤 이동 타이머가 뭘 정해놨든 무시하고 매 프레임 중앙을 목표로 고정한다.
 	if (_curPhaseIndex == _fixedPosPhaseIndex)
@@ -214,10 +236,11 @@ void Boss::Update(float deltaTime)
 	const vector<TimelineStep>& timeline = _phases[_curPhaseIndex].timeline;
 	while (_timelineIndex < (int32)timeline.size() && timeline[_timelineIndex].time <= _phaseElapsedTime)
 	{
-		// Spiral/Cross/ConvergingBurst는 연속 타이머가 따로 쏘고 있으므로 여기서는 건너뛴다.
+		// Spiral/Cross/ConvergingBurst/BorderAimedBurst는 연속 타이머가 따로 쏘고 있으므로 여기서는 건너뛴다.
 		if (timeline[_timelineIndex].pattern != BossPatternType::Spiral &&
 			timeline[_timelineIndex].pattern != BossPatternType::Cross &&
-			timeline[_timelineIndex].pattern != BossPatternType::ConvergingBurst)
+			timeline[_timelineIndex].pattern != BossPatternType::ConvergingBurst &&
+			timeline[_timelineIndex].pattern != BossPatternType::BorderAimedBurst)
 		{
 			shootBullet(timeline[_timelineIndex].pattern);
 		}
@@ -241,6 +264,19 @@ void Boss::Render(HDC hdc)
 		if (magicCircle)
 		{
 			magicCircle->Render(hdc, GetPos());
+		}
+	}
+
+	// BorderAimedBurst가 활성화된 동안, 6개의 마법진을 각자 위치에 그려준다.
+	if (_borderBurstTimerId != -1)
+	{
+		Texture* magicCircle = ResourceManager::GetInstance().GetTexture(L"MagicCircle");
+		if (magicCircle)
+		{
+			for (int32 i = 0; i < 6; ++i)
+			{
+				magicCircle->Render(hdc, getBorderMarkerPos(i));
+			}
 		}
 	}
 
@@ -337,6 +373,12 @@ void Boss::transitionToNextPhase()
 	{
 		_convergingBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootConvergingBurst(); }, _convergingInterval, true);
 	}
+	TimeManager::GetInstance().Remove(_borderBurstTimerId);
+	if (ContainsBorderAimedBurst(_phases[_curPhaseIndex].timeline))
+	{
+		initBorderMarkers();
+		_borderBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootBorderAimedBurst(); }, _borderBurstInterval, true);
+	}
 }
 
 void Boss::shootBullet(BossPatternType pattern)
@@ -394,6 +436,9 @@ void Boss::shootBullet(BossPatternType pattern)
 			break;
 		case BossPatternType::ConvergingBurst :
 			// Update()에서 이미 걸러내고 연속 타이머(_convergingBurstTimerId)로 처리하므로 여기선 아무것도 안 함.
+			break;
+		case BossPatternType::BorderAimedBurst :
+			// Update()에서 이미 걸러내고 연속 타이머(_borderBurstTimerId)로 처리하므로 여기선 아무것도 안 함.
 			break;
 		case BossPatternType::Random :
 		{
@@ -515,6 +560,91 @@ void Boss::shootConvergingBurst()
 	}
 
 	_circleAngle += _circleRotationSpeed;
+}
+
+Vector Boss::getBorderCornerPos(int32 cornerIndex) const
+{
+	switch (((cornerIndex % 4) + 4) % 4)
+	{
+		case 0: return Vector(0.f, 0.f);
+		case 1: return Vector((float)GWinSizeX, 0.f);
+		case 2: return Vector((float)GWinSizeX, (float)GWinSizeY);
+		default: return Vector(0.f, (float)GWinSizeY);
+	}
+}
+
+Vector Boss::getBorderMarkerPos(int32 markerIndex) const
+{
+	const BorderMarker& m = _borderMarkers[markerIndex];
+	Vector from = getBorderCornerPos(m.fromCorner);
+	Vector to = getBorderCornerPos(m.toCorner);
+	// 인접 코너는 항상 X축 또는 Y축 중 한쪽 좌표만 다르므로, 선형보간만으로 축 이동이 자연히 결정된다.
+	float t = (m.segmentTime < _borderGlideDuration) ? (m.segmentTime / _borderGlideDuration) : 1.f;
+	return from + (to - from) * t;
+}
+
+void Boss::initBorderMarkers()
+{
+	for (int32 i = 0; i < 6; ++i)
+	{
+		bool groupB = (i >= 3);
+		int32 startCorner = groupB ? 2 : 0;	// 그룹A=(0,0), 그룹B=대각선 반대 코너
+		int32 dir = (rand() % 2 == 0) ? 1 : -1;
+
+		_borderMarkers[i].fromCorner = startCorner;
+		_borderMarkers[i].toCorner = startCorner + dir;
+		// 3번(인덱스2)/6번(인덱스5)만 시작 타이머를 0.2초 앞당겨서 리더와 살짝 어긋나 보이게 한다.
+		_borderMarkers[i].segmentTime = (i == 2 || i == 5) ? 0.2f : 0.f;
+		_borderMarkers[i].aimAtPlayer = (i == 0 || i == 3);
+	}
+}
+
+void Boss::updateBorderMarkers(float deltaTime)
+{
+	float segmentDuration = _borderGlideDuration + _borderPauseDuration;
+
+	for (int32 i = 0; i < 6; ++i)
+	{
+		BorderMarker& m = _borderMarkers[i];
+		m.segmentTime += deltaTime;
+		if (m.segmentTime >= segmentDuration)
+		{
+			m.segmentTime -= segmentDuration;
+			m.fromCorner = m.toCorner;
+			// 코너에 도착할 때마다 독립적으로 시계/반시계 방향을 다시 랜덤으로 고른다.
+			int32 dir = (rand() % 2 == 0) ? 1 : -1;
+			m.toCorner = m.fromCorner + dir;
+		}
+	}
+}
+
+void Boss::shootBorderAimedBurst()
+{
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_attackPoseTimer = 0.3f;
+
+	const Vector fixedTarget(300.f, 400.f);
+	Player* player = scene->GetPlayer();
+
+	for (int32 i = 0; i < 6; ++i)
+	{
+		Vector pos = getBorderMarkerPos(i);
+		bool aimAtPlayer = _borderMarkers[i].aimAtPlayer;
+		// 조준 대상에 따라 탄 색을 구분한다: 플레이어 조준=빨강, 화면 중앙 조준=파랑.
+		Vector target = (aimAtPlayer && player != nullptr) ? player->GetPos() : fixedTarget;
+		wstring textureKey = aimAtPlayer ? L"OrbRed" : L"OrbBlue";
+
+		Vector dir = target - pos;
+		dir.Normalize();
+
+		scene->CreateBullet(pos, BulletType::Enemy, dir, _borderBulletSpeed, false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None, textureKey);
+	}
 }
 
 void Boss::shootAimedBurst()
