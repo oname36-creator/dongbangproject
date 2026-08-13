@@ -180,6 +180,7 @@
     <ClInclude Include="Client\CharacterSelectScene.h" />
     <ClInclude Include="Client\ResultScene.h" />
     <ClInclude Include="Client\EndingScene.h" />
+    <ClInclude Include="Engine\SaveManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Engine\Actor.cpp" />
@@ -227,6 +228,7 @@
     <ClCompile Include="Client\CharacterSelectScene.cpp" />
     <ClCompile Include="Client\ResultScene.cpp" />
     <ClCompile Include="Client\EndingScene.cpp" />
+    <ClCompile Include="Engine\SaveManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Client\DongbangProject.rc" />

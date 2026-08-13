@@ -52,6 +52,9 @@
     <ClInclude Include="Engine\AudioManager.h">
       <Filter>Engine</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\SaveManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Singleton.h">
       <Filter>Engine</Filter>
     </ClInclude>
@@ -175,6 +178,9 @@
       <Filter>Engine</Filter>
     </ClCompile>
     <ClCompile Include="Engine\AudioManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\SaveManager.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
     <ClCompile Include="Engine\SpriteRenderer.cpp">

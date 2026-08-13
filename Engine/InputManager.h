@@ -23,6 +23,7 @@ enum class KeyType
 	KEY_1 = '1',
 	KEY_2 = '2',
 	KEY_3 = '3',
+	KEY_4 = '4',
 
 	LOW_SPEED = VK_SHIFT,
 	ATTACK = 'Z',

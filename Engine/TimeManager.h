@@ -29,6 +29,8 @@ class TimeManager : public Singleton<TimeManager>
 public:
 	void Init();
 	void Update();
+	// 타이머(AddTimer로 등록된 발사 타이머 등) 발동만 처리. 일시정지 중엔 호출을 건너뛰기 위해 분리.
+	void UpdateTimers();
 
 	uint32 GetFPS() { return _fps; }
 

@@ -27,6 +27,7 @@ public:
 
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
+	virtual void RenderOverlay(HDC hdc) override;
 
 
 
@@ -41,6 +42,8 @@ public:
 		Stage3,
 		Stage3MidBoss,
 		Stage3Boss,
+		Extra,
+		ExtraBoss,
 		Clear,
 		Continue,
 		GameOver
@@ -56,22 +59,30 @@ public:
 	void DeleteActor(class Actor* actor);
 
 	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
-					   float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
-	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f);
+					   float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
+					   wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f);
+	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f, wstring customTextureKey = L"", float colliderSizeOverride = -1.f,
+					   bool faceDirection = false);
 	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
-	void FireFan(Vector pos,BulletType type,Vector dir,float angleSpread,int32 count,float speed);
+	void FireFan(Vector pos, BulletType type, Vector dir, float angleSpread, int32 count, float speed,
+				 wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false);
 	void FireCircle(Vector pos, BulletType type, int32 count, float speed,
-					 float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
-	void FireSpiral(Vector pos,BulletType type,int32 count,float speed,float& rotationAngle, float rotationSpeed);
+					 float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
+					 wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float startAngle = 0.f);
+	void FireSpiral(Vector pos, BulletType type, int32 count, float speed, float& rotationAngle, float rotationSpeed,
+					 wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false);
 	void FireRandom(Vector pos, BulletType type, int32 count, float speed, float accel,
-					 float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None);
+					 float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
+					 wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false);
 	void FireHoming(Vector pos, BulletType type, Vector dir, float speed = 500.f, float turnSpeed = 180.f);
-	void FireGrid(Vector origin, BulletType type, Vector dir, int32 raws, int32 cols, float spacingX, float spacingY, float speed);
+	void FireGrid(Vector origin, BulletType type, Vector dir, int32 raws, int32 cols, float spacingX, float spacingY, float speed, wstring customTextureKey = L"", float colliderSizeOverride = -1.f);
 	void FireCross(float y, BulletType type, float speed);
 
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
 	void BombClearBullets();	// 폭탄 전용: 적 탄환을 점수 아이템으로 바꿔서 플레이어에게 자동 회수시킨다
+	void ShowBombFace();	// 폭탄 사용 시 화면 왼쪽 아래에 1.5초간 일러스트를 띄운다.
+	void ShowFace(wstring textureKey);	// 보스 진입 등, 임의의 일러스트를 같은 방식으로 왼쪽 아래에 띄운다.
 
 	void SpawnWave(const WaveEntry& wave);
 	void SpawnItem(Vector pos, ItemKind kind, int32 powerValue = 1, bool burst = false, bool autoCollect = false);
@@ -95,6 +106,7 @@ private:
 	void createObjects();
 	void onPlayerDead();	// 플레이어 사망 시 호출: 컨티뉴 가능하면 Continue, 아니면 GameOver로 분기
 	void clearWaveActors();	// 디버그 스테이지 점프(KEY_1/2/3) 시, 이전 스테이지에 남아있던 일반 적/적 탄환 정리
+	void showStageBanner(int32 stageNum);	// 스테이지 진입 시 화면 중앙에 2초간 "스테이지 N" 배너를 띄운다.
 
 	// actor List / render List 의 동기화를 맞춰주기 위해서, 항상 호출되는 함수
 	void registerActor(Actor* actor);
@@ -150,6 +162,9 @@ private:
 
 	bool _isPaused = false;
 
+	// 일시정지/컨티뉴 등 팝업 문구용 폰트 (타이틀 화면과 동일한 Griun Fromsol).
+	HFONT _uiFont = nullptr;
+
 	// 일시정지 메뉴: Resume/Quit Game 선택 -> Quit 선택 시 Really? Yes/No 재확인
 	enum class PauseState
 	{
@@ -159,6 +174,17 @@ private:
 	PauseState _pauseState = PauseState::Menu;
 	int32 _pauseMenuSelect = 0;			// 0 = Resume, 1 = Quit Game
 	bool _quitConfirmSelectYes = false;	// 기본값 No (실수로 종료 방지)
+
+	// 스테이지 진입 시 화면 중앙에 2초간 띄우는 배너("스테이지 N").
+	wstring _stageBannerText;
+	float _stageBannerTimer = 0.f;
+
+	// 폭탄 사용/보스 진입 시 화면 왼쪽 아래에 1.5초간 띄우는 일러스트.
+	float _bombFaceTimer = 0.f;
+	wstring _faceTextureKey = L"BombFace";
+
+	// 엑스트라 스테이지: 요정 웨이브 없이 FullPower 3개를 깔아두고, 전부 회수되면 보스로 전환한다.
+	bool _extraItemsSpawned = false;
 
 	int32 _score = 0;
 	float _stageElapsedTime = 0.f;
