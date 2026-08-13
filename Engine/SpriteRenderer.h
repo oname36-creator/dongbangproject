@@ -12,6 +12,8 @@ public:
 
 	bool IsEnd() const { return _isEnd; }
 	void SetLoop(bool loop) { _loop = loop; }
+	void SetAlpha(BYTE alpha) { _alpha = alpha; }
+	void SetFlipX(bool flipX) { _flipX = flipX; }
 
 	uint32 GetSizeX() const;
 	uint32 GetSizeY() const;
@@ -28,5 +30,7 @@ private:
 	bool _loop = false;	// 무한 재생
 
 	float _sumTime = 0;
+	BYTE _alpha = 255;
+	bool _flipX = false;
 };
 

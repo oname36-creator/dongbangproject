@@ -4,9 +4,9 @@ class Texture
 {
 public:
 	void Load(wstring texturePath, int32 transparent, int32 row, int32 col, float dur);
-	void Render(HDC hdc, Vector pos, Vector srcPos = Vector(0,0), BYTE alpha = 255);
+	void Render(HDC hdc, Vector pos, Vector srcPos = Vector(0,0), BYTE alpha = 255, bool flipX = false);
 	// destSize를 (0,0)으로 두면 원본 프레임 크기 그대로 그린다. 지정하면 그 크기로 늘려서 그린다.
-	void RenderScreen(HDC hdc, Vector screenPos, Vector srcPos = Vector(0,0), Vector destSize = Vector(0,0));
+	void RenderScreen(HDC hdc, Vector screenPos, Vector srcPos = Vector(0,0), Vector destSize = Vector(0,0), BYTE alpha = 255);
 
 	~Texture();
 

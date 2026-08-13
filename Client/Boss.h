@@ -15,6 +15,8 @@ enum class BossPatternType
 	CircleDelayedAimed,		// 시험용: Circle이되 잠시 날아가다 정지 후 플레이어 조준으로 방향 전환
 	CircleDelayedRandom,	// 시험용: Circle이되 잠시 날아가다 정지 후 무작위 방향으로 전환
 	RandomDelayedRandom,	// 무작위 난사 + 잠시 날아가다 정지 후 다시 무작위 방향으로 전환
+	AimedSpread,
+	ConvergingBurst,	// 한 방향으로 3발이 각기 다른 속도로 동시에 나갔다가, 목표 속도로 수렴해서 나란히 정렬된다.
 };
 struct TimelineStep
 {
@@ -47,7 +49,19 @@ public:
 			  int32 randomShotCount = 8, float randomAccel = 100.f, bool randomAlternateAccel = true,
 			  float fanAngleSpread = 60.f, int32 fanShotCount = 5,
 			  int32 randomDelayedShotCount = 12, float randomDelayedSpeed = 250.f,
-			  float randomDelayedPreStop = 1.0f, float randomDelayedDelay = 0.8f);
+			  float randomDelayedPreStop = 1.0f, float randomDelayedDelay = 0.8f,
+			int32 spreadShotCount = 20, float spreadAngle = 30.f,
+			float spreadMinSpeed = 200.f, float spreadMaxSpeed = 400.f,
+			int32 circleShotCount = 12, wstring circleTextureKey = L"",
+			wstring burstTextureKey = L"", float circleColliderSize = -1.f,
+			int32 decorPhaseIndex = -1,
+			wstring burstTextureKeyAlt = L"", int32 burstTextureAltPhaseIndex = -1, float burstColliderSizeAlt = -1.f,
+			wstring randomTextureKey = L"", wstring spiralTextureKey = L"", wstring fanTextureKey = L"", wstring randomDelayedTextureKey = L"",
+			bool bulletsFaceDirection = false, float faceDirectionColliderSize = -1.f,
+			wstring circleDelayedAimedTextureKey = L"", wstring circleDelayedRandomTextureKey = L"",
+			int32 fixedPosPhaseIndex = -1, float circleRotationSpeed = 0.f,
+			float convergingSpeed = 300.f, float convergingSpeedSpread = 150.f, float convergingInterval = 0.6f,
+			float convergingAngleSpread = 10.f);
 	virtual void Destroy() override;
 
 	virtual void Update(float deltaTime) override;
@@ -71,6 +85,9 @@ private:
 	void shootTelegraphBullet();
 	void shootAimedBurst();
 	void setAnimState(BossAnimState state);
+	void shootSpreadBullet();
+	void shootCrossBullet();
+	void shootConvergingBurst();
 
 private:
 	int32 _hp = 0;
@@ -83,6 +100,17 @@ private:
 	int32 _telegraphTimerId = -1;
 	float _spiralAngle = 0.f;
 
+	// Cross도 Spiral처럼 페이즈 내내 일정 간격으로 계속 쏘는 연속 발사로 처리한다.
+	int32 _crossShootTimerId = -1;
+
+	int32 _spreadShootTimerId = -1;
+	int32 _spreadShotsRemaining = 0;
+	Vector _spreadBaseDir;
+	int32 _spreadShotCount =20;
+	float _spreadAngle = 30.f;
+	float _spreadMinSpeed = 200.f;
+	float _spreadMaxSpeed = 400.f;
+
 	// 보스별로 Spiral 팔 개수/회전 속도/발사 간격을 조절하기 위한 값. 기본값은 기존 동작과 동일.
 	int32 _spiralArmCount = 2;
 	float _spiralRotationSpeed = 10.f;
@@ -93,6 +121,13 @@ private:
 	int32 _burstShotsRemaining = 0;
 	int32 _burstTotalShots = 0;	// 첫 발부터 몇 번째 발인지 계산해서 점점 빨라지는 속도를 주기 위함
 	Vector _burstDir;
+	wstring _burstTextureKey = L"";	// 보스별로 AimedBurst 탄 텍스처를 조절하기 위한 값.
+
+	// 특정 페이즈에서만 AimedBurst 텍스처/콜라이더를 다르게 쓰기 위한 값. phaseIndex가 -1이거나
+	// 텍스처가 비어있으면 위 _burstTextureKey(기본값)를 그대로 쓴다.
+	wstring _burstTextureKeyAlt = L"";
+	int32 _burstTextureAltPhaseIndex = -1;
+	float _burstColliderSizeAlt = -1.f;
 
 	float _phaseElapsedTime=0.f;
 	int32 _timelineIndex =0;
@@ -118,14 +153,52 @@ private:
 	int32 _randomShotCount = 8;
 	float _randomAccel = 100.f;
 	bool _randomAlternateAccel = true;
+	wstring _randomTextureKey = L"";	// 보스별로 Random 탄 텍스처를 조절하기 위한 값.
 
 	// 보스별로 Fan 탄막의 부채꼴 각도/탄수를 조절하기 위한 값.
 	float _fanAngleSpread = 60.f;
 	int32 _fanShotCount = 5;
+	wstring _fanTextureKey = L"";	// 보스별로 Fan 탄 텍스처를 조절하기 위한 값.
+
+	wstring _spiralTextureKey = L"";	// 보스별로 Spiral 탄 텍스처를 조절하기 위한 값.
+
+	// 보스별로 Circle 탄막의 탄수/텍스처/콜라이더 크기를 조절하기 위한 값.
+	int32 _circleShotCount = 12;
+	wstring _circleTextureKey = L"";
+	float _circleColliderSize = -1.f;
+	// Circle을 연속으로 쏠 때마다 이만큼씩 회전시켜서, 겹겹이 쌓이는 꽃잎 모양을 만든다. 0이면 항상 같은 각도(기존 동작).
+	float _circleRotationSpeed = 0.f;
+	float _circleAngle = 0.f;
 
 	// RandomDelayedRandom(난사 + 정지 후 재무작위)용 값.
 	int32 _randomDelayedShotCount = 12;
 	float _randomDelayedSpeed = 250.f;
 	float _randomDelayedPreStop = 1.0f;
 	float _randomDelayedDelay = 0.8f;
+	wstring _randomDelayedTextureKey = L"";	// 보스별로 RandomDelayedRandom 탄 텍스처를 조절하기 위한 값.
+
+	// true면 위 텍스처들(Fan/Random/Spiral/RandomDelayedRandom/AimedBurst)을 dir 방향에 맞춰 16방향 중
+	// 가장 가까운 쪽으로 회전시켜서 그린다(단검처럼 방향성 있는 텍스처용). 미리 회전된 9장(0~180도)을
+	// 두고 나머지는 좌우 반전으로 대체하는 방식이라, 텍스처 키가 "이름_각도" 형태로 등록돼 있어야 한다.
+	bool _bulletsFaceDirection = false;
+	// 위 방향 회전 텍스처들의 콜라이더 반지름(회전 스프라이트 크기에 맞춰 보스별로 다르게 준다. -1이면 auto).
+	float _faceDirectionColliderSize = -1.f;
+
+	// CircleDelayedAimed/CircleDelayedRandom 전용 텍스처. (일반 Circle은 _circleTextureKey를 그대로 씀)
+	wstring _circleDelayedAimedTextureKey = L"";
+	wstring _circleDelayedRandomTextureKey = L"";
+
+	// 특정 페이즈에서만 보스 뒤에 연출용 마법진을 그리기 위한 값. -1이면 안 그림.
+	int32 _decorPhaseIndex = -1;
+
+	// 특정 페이즈에서만 보스를 화면 중앙(GWinSizeX*0.5, 150)에 고정시키기 위한 값. -1이면 평소처럼 랜덤 이동.
+	int32 _fixedPosPhaseIndex = -1;
+
+	// ConvergingBurst: Spiral/Cross처럼 페이즈 내내 일정 간격으로 계속 쏘는 연속 발사로 처리한다.
+	// 3발이 각각 (목표속도-스프레드) / 목표속도 / (목표속도+스프레드)로 시작해서 전부 목표속도로 수렴한다.
+	int32 _convergingBurstTimerId = -1;
+	float _convergingSpeed = 300.f;
+	float _convergingSpeedSpread = 150.f;
+	float _convergingInterval = 0.6f;
+	float _convergingAngleSpread = 10.f;	// 3발이 같은 방향이 아니라 이 각도만큼씩 벌어져서 나간다.
 };

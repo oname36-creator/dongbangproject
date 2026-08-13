@@ -3,7 +3,7 @@
 #include "Texture.h"
 #include "ResourceManager.h"
 #include "ColliderCircle.h"
-#include "ImageRenderer.h"
+#include "SpriteRenderer.h"
 #include "Game.h"
 #include "GameScene.h"
 #include "Player.h"
@@ -13,7 +13,8 @@ static random_device rd;
 static mt19937 gen(rd());
 
 void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed,  float accel,
-				   float preStopTime, float launchDelay, BulletRedirectMode redirectMode)
+				   float preStopTime, float launchDelay, BulletRedirectMode redirectMode,
+				   wstring customTextureKey, float colliderSizeOverride, bool faceDirection, float targetSpeed)
 {
 	_type = type;
 	_isHoming = isHoming;
@@ -21,13 +22,13 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	_preStopTime = preStopTime;
 	_launchDelay = launchDelay;
 	_redirectMode = redirectMode;
+	_targetSpeed = targetSpeed;
 
 	wstring textureKey;
-	int32 textureIndex = -1;
 
 	if (_type == BulletType::Enemy)
 	{
-		textureKey = L"EnemyBullet";
+		textureKey = customTextureKey.empty() ? L"EnemyBullet" : customTextureKey;
 		_dir = dir;
 		_moveSpeed = speed;
 		_accel = accel;
@@ -35,27 +36,34 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	else
 	{
 		// 플레이어의 총알 (보조 호밍탄은 다른 텍스처 사용)
-		textureKey = isHoming ? L"PlayerHomingBullet" : L"PlayerBullet";
+		textureKey = customTextureKey.empty() ? (isHoming ? L"PlayerHomingBullet" : L"PlayerBullet") : customTextureKey;
 		_dir = dir;
 		_moveSpeed = speed;
 		_accel = accel;
 	}
 
-	//_texture = ResourceManager::GetInstance().GetTexture(textureKey);
-	//_renderer = new ImageRenderer();
+	_faceDirection = faceDirection;
+	_baseTextureKey = textureKey;
 
 	// Init함수가, Pool에서 꺼내쓸때마다 호출
 	// renderer 객체가 계속 생성된다.
 
 	// 오브젝트 풀 사용시 : 예외처리 추가.
-	ImageRenderer* renderer = GetComponent<ImageRenderer>();
+	SpriteAnimRenderer* renderer = GetComponent<SpriteAnimRenderer>();
 	if (renderer == nullptr)
 	{
-		renderer = AddComponent<ImageRenderer>();
+		renderer = AddComponent<SpriteAnimRenderer>();
 	}
 
-	renderer->Init(textureKey, textureIndex);
+	renderer->Init(textureKey);
+	renderer->SetLoop(true);
 	renderer->SetAlpha(_type == BulletType::Player ? 120 : 255);
+
+	if (_faceDirection)
+	{
+		// renderer->Init() 직후에 회전 텍스처로 다시 덮어씌운다.
+		updateFaceDirectionTexture();
+	}
 
 	// texture의 width 만큼 충돌체를 생성한다.
 	//_collider = new ColliderCircle();
@@ -64,7 +72,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	{
 		collider = AddComponent<ColliderCircle>();
 	}
-	collider->Init(this, renderer->GetSizeX()-3);
+	collider->Init(this, colliderSizeOverride >= 0.f ? colliderSizeOverride : renderer->GetSizeX() - 3);
 
 	// 플레이어의 총알만, 충돌매니저에 등록한다.
 	collider->SetCheckCell(_type == BulletType::Player);
@@ -108,6 +116,11 @@ void Bullet::Update(float deltaTime)
 			float radian = DegreeToRadian(uniform_real_distribution<float>(0.f, 360.f)(gen));
 			_dir = Vector(cosf(radian), sinf(radian));
 		}
+
+		if (_faceDirection)
+		{
+			updateFaceDirectionTexture();
+		}
 	}
 
 	if (_isHoming)
@@ -138,7 +151,25 @@ void Bullet::Update(float deltaTime)
 			_dir = Vector(cosf(newAngle), sinf(newAngle));
 		}
 	}
+		if (_targetSpeed >= 0.f && _accel != 0.f)
+	{
+		// 목표 속도가 있으면, 가속 방향과 상관없이 그 속도에 도달하는 순간 가속을 끄고 고정한다.
+		float next = _moveSpeed + _accel * deltaTime;
+		bool reached = (_accel > 0.f) ? (next >= _targetSpeed) : (next <= _targetSpeed);
+		if (reached)
+		{
+			_moveSpeed = _targetSpeed;
+			_accel = 0.f;
+		}
+		else
+		{
+			_moveSpeed = next;
+		}
+	}
+	else
+	{
 		_moveSpeed = std::clamp(_moveSpeed + _accel * deltaTime, 0.f, 2000.f);
+	}
 	Vector pos = GetPos();
 	pos = pos + _dir * _moveSpeed * deltaTime;
 	SetPos(pos);
@@ -159,4 +190,34 @@ void Bullet::Render(HDC hdc)
 	//{
 	//	_renderer->Render(hdc, GetPos());
 	//}
+}
+
+void Bullet::updateFaceDirectionTexture()
+{
+	SpriteAnimRenderer* renderer = GetComponent<SpriteAnimRenderer>();
+	if (renderer == nullptr)
+		return;
+
+	// 텍스처를 16방향 중 가장 가까운 방향으로 회전시켜서 그린다.
+	// 기본 스프라이트(0도)는 아래(0,1) 방향을 바라보고 있고, 좌우 대칭인 절반(0~180도, 9장)만
+	// 미리 회전시켜 만들어뒀기 때문에 180도를 넘는 쪽은 좌우 반전으로 대체한다.
+	static const wchar_t* angleLabels[9] = { L"000", L"023", L"045", L"068", L"090", L"113", L"135", L"158", L"180" };
+
+	float theta = RadianToDegree(atan2f(-_dir.x, _dir.y));
+	while (theta < 0.f) theta += 360.f;
+	while (theta >= 360.f) theta -= 360.f;
+
+	int32 bucket = (int32)(theta / 22.5f + 0.5f) % 16;
+	int32 angleIndex = bucket;
+	bool flipX = false;
+	if (bucket > 8)
+	{
+		angleIndex = 16 - bucket;
+		flipX = true;
+	}
+
+	renderer->Init(_baseTextureKey + L"_" + angleLabels[angleIndex]);
+	renderer->SetLoop(true);
+	renderer->SetAlpha(_type == BulletType::Player ? 120 : 255);
+	renderer->SetFlipX(flipX);
 }
