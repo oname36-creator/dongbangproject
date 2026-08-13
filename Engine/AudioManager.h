@@ -19,6 +19,10 @@ public:
 	void LoadSound(wstring key, wstring fileName);
 	void Play(wstring key);
 
+	// 배경음악 전용 슬롯. 한 곡만 무한 루프로 틀고, 새로 틀면 이전 곡을 정지한다.
+	void PlayBGM(wstring key);
+	void StopBGM();
+
 private:
 	AudioManager() = default;
 	~AudioManager() = default;
@@ -57,4 +61,7 @@ private:
 
 	// 재생 중인 소스 보이스들. 끝난 것은 Update()에서 정리한다.
 	vector<VoiceCallback*> _activeVoices;
+
+	// 무한 루프로 재생 중인 배경음악 보이스(콜백 없이 직접 관리, StopBGM/새 곡 재생 시 정지).
+	IXAudio2SourceVoice* _bgmVoice = nullptr;
 };

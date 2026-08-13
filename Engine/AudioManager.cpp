@@ -20,6 +20,8 @@ void AudioManager::Cleanup()
 	}
 	_activeVoices.clear();
 
+	StopBGM();
+
 	if (_masteringVoice)
 	{
 		_masteringVoice->DestroyVoice();
@@ -146,4 +148,37 @@ void AudioManager::Play(wstring key)
 
 	voice->SubmitSourceBuffer(&buffer);
 	voice->Start();
+}
+
+void AudioManager::PlayBGM(wstring key)
+{
+	auto find = _sounds.find(key);
+	if (find == _sounds.end())
+		return;
+
+	StopBGM();
+
+	const SoundClip& clip = find->second;
+
+	_engine->CreateSourceVoice(&_bgmVoice, &clip.format);
+	if (_bgmVoice == nullptr)
+		return;
+
+	XAUDIO2_BUFFER buffer = {};
+	buffer.AudioBytes = (UINT32)clip.data.size();
+	buffer.pAudioData = clip.data.data();
+	buffer.LoopCount = XAUDIO2_LOOP_INFINITE;
+
+	_bgmVoice->SubmitSourceBuffer(&buffer);
+	_bgmVoice->Start();
+}
+
+void AudioManager::StopBGM()
+{
+	if (_bgmVoice)
+	{
+		_bgmVoice->Stop();
+		_bgmVoice->DestroyVoice();
+		_bgmVoice = nullptr;
+	}
 }
