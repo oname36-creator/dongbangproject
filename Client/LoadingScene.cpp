@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "LoadingScene.h"
 #include "SceneManager.h"
 #include "TitleScene.h"
@@ -8,6 +8,24 @@
 void LoadingScene::Init()
 {
 	ResourceManager::GetInstance().LoadTexture(L"LoadingLogo", L"LoadingLogo.bmp", -1);
+
+	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
+	AddFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
+	_font = CreateFont(-24, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+		HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+		DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
+}
+
+void LoadingScene::Cleanup()
+{
+	if (_font)
+	{
+		DeleteObject(_font);
+		_font = nullptr;
+	}
+
+	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
+	RemoveFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
 }
 
 void LoadingScene::Update(float deltaTime)
@@ -33,6 +51,11 @@ void LoadingScene::Render(HDC hdc)
 		logo->RenderScreen(hdc, Vector(GWindowSizeX / 2.0f, GWinSizeY / 2.0f), Vector(0, 0), Vector(destSizeX, destSizeY));
 	}
 
-	const wchar_t* loading = L"Loading...";
+	HFONT prevFont = _font ? (HFONT)SelectObject(hdc, _font) : nullptr;
+	const wchar_t* loading = L"소녀 기도 중...";
 	::TextOut(hdc, GWindowSizeX / 2 - 60, GWinSizeY / 2 - 20, loading, static_cast<int32>(wcslen(loading)));
+	if (prevFont)
+	{
+		SelectObject(hdc, prevFont);
+	}
 }

@@ -9,7 +9,9 @@ public:
 	virtual void Init() override;
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
+	virtual void Cleanup() override;
 
 private:
 	float _elapsed = 0.f;
+	HFONT _font = nullptr;
 };

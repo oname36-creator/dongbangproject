@@ -62,6 +62,8 @@ void Player::Update(float deltaTime)
 	{
 		_boom -= 1;
 		Game::GetInstance().GetScene()->BombClearBullets();
+		Game::GetInstance().GetScene()->ShowBombFace();
+		SetInvincible(3.3f);
 	}
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::Up))
 	{
@@ -131,9 +133,10 @@ void Player::Render(HDC hdc)
 
 void Player::OnEnter(Actor* other)
 {
-	// 적 총알 or 적 비행기라면 피해입기
+	// 적 총알 or 적 비행기 or 보스 몸체라면 피해입기
 	if (other->GetActorType() == ActorType::Enemy ||
-		other->GetActorType() == ActorType::EnemyBullet)
+		other->GetActorType() == ActorType::EnemyBullet ||
+		other->GetActorType() == ActorType::Boss)
 	{
 		takeDamage();
 	}

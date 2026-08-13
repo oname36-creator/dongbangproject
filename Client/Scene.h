@@ -23,6 +23,9 @@ public:
 	virtual void Init(){};
 	virtual void Cleanup(){};
 	virtual void Render(HDC hdc){};
+
+	// UI(사이드바)보다 나중에, 맨 위에 그려야 하는 오버레이(예: 스테이지 결과 화면).
+	virtual void RenderOverlay(HDC hdc){};
 };
 
 
