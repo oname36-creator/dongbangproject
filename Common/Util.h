@@ -42,5 +42,6 @@ enum class ActorType
 	Boss,
 	Effect,
 	Item,
+	EnemyLaser,
 	Count,	// 최대 개수
 };

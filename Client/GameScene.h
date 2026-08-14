@@ -10,7 +10,9 @@
 // C++17
 class Enemy;
 class Bullet;
+class LaserSegment;
 class Boss;
+class Laser;
 
 
 // 게임화면에 등장하는 모든 오브젝트를 관리
@@ -57,6 +59,11 @@ public:
 
 	// 씬에서 관리되는 Actor중에 하나 삭제해달라고 요청
 	void DeleteActor(class Actor* actor);
+
+	// Laser가 매 프레임 위치를 재계산해서 SetPos()로 갱신할 세그먼트를 하나 꺼내준다.
+	// (Bullet과 달리 Laser 쪽에서 포인터를 계속 들고 있어야 해서 반환값을 넘겨준다)
+	class LaserSegment* CreateLaserSegment(Vector pos, int32 radius);
+	class Laser* CreateLaser(Vector pivot, float angleOffset, float length, int32 segmentCount, int32 segmentRadius);
 
 	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
 					   float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
@@ -159,6 +166,7 @@ private:
 	ObjectPool<Bullet> _bulletPool;
 	ObjectPool<Enemy>  _enemyPool;
 	ObjectPool<Item> _itemPool;
+	ObjectPool<LaserSegment> _laserSegmentPool;
 
 	bool _isPaused = false;
 

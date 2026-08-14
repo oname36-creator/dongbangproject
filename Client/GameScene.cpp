@@ -10,6 +10,7 @@
 #include "TimeManager.h"
 #include "Bullet.h"
 #include "Item.h"
+#include "LaserSegment.h"
 #include "CollisionManager.h"
 #include "Effect.h"
 #include "DataManager.h"
@@ -23,7 +24,7 @@
 #include "SceneManager.h"
 #include "AudioManager.h"
 #include "SaveManager.h"
-
+#include "Laser.h"
 
 #include <random>
 #include <format>
@@ -165,7 +166,9 @@ static const vector<BossPhase> g_extraBossPhases =
 	// 2페이즈: ConvergingBurst — 플레이어 방향으로 3발이 느리게/보통/빠르게 동시에 나갔다가 같은 속도로 수렴해서 정렬된다.
 	{ { { 0.f, BossPatternType::ConvergingBurst } }, 1.0f, 4000 },
 	// 3페이즈(실험용): 마법진 6개가 화면 테두리를 돌면서 조준탄을 계속 쏜다.
-	{ { { 0.f, BossPatternType::BorderAimedBurst } }, 1.0f, 0 },
+	{ { { 0.f, BossPatternType::BorderAimedBurst } }, 1.0f, 3500 },
+	// 4페이즈
+	{{{0.f, BossPatternType::Leavatein}}, 1.0f , 0}
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
@@ -202,6 +205,7 @@ void GameScene::Init()
 	_bulletPool.Init(3000);
 	_enemyPool.Init(1000);
 	_itemPool.Init(2000);
+	_laserSegmentPool.Init(200); // 동시에 존재 가능한 칼날 개수 x 칼날당 세그먼트 개수 기준으로 여유있게. 부족해지면 올릴 것
 
 	// Scene에 필요한 객체 생성
 	createObjects();
@@ -1011,6 +1015,29 @@ void GameScene::SpawnItem(Vector pos, ItemKind kind, int32 powerValue, bool burs
 	item->Init(pos, kind, powerValue, burst, autoCollect);
 	_reservedAdd.push_back(item);
 }
+
+LaserSegment* GameScene::CreateLaserSegment(Vector pos, int32 radius)
+{
+	LaserSegment* segment = _laserSegmentPool.Acquire();
+	if (segment == nullptr)
+		return nullptr;
+
+	segment->Init(radius);
+	segment->SetPos(pos);
+
+	_reservedAdd.push_back(segment);
+	return segment;
+}
+
+Laser* GameScene::CreateLaser(Vector pivot, float angleOffset, float length, int32 segmentCount, int32 segmentRadius)
+{
+	Laser* laser = new Laser();
+	laser->Init(pivot, angleOffset, length, segmentCount, segmentRadius);
+	_reservedAdd.push_back(laser);
+
+	return laser;
+}
+
 
 void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed, float accel,
 							  float preStopTime, float launchDelay, BulletRedirectMode redirectMode, wstring customTextureKey,

@@ -137,6 +137,7 @@
     "Boss1Face": { "fileName": "Boss1Face.bmp", "transparent": [255, 0, 255] },
     "Boss2Face": { "fileName": "Boss2Face.bmp", "transparent": [255, 0, 255] },
     "Boss3MidFace": { "fileName": "Boss3MidFace.bmp", "transparent": [255, 0, 255] },
-    "Boss3Face": { "fileName": "Boss3Face.bmp", "transparent": [255, 0, 255] }
+    "Boss3Face": { "fileName": "Boss3Face.bmp", "transparent": [255, 0, 255] },
+    "LeavateinGuard": { "fileName": "LeavateinGuard.bmp", "transparent": [67, 54, 54] }
   }
 }

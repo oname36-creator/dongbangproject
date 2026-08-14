@@ -9,6 +9,7 @@
 #include "SpriteRenderer.h"
 #include "ResourceManager.h"
 #include "Texture.h"
+#include "Laser.h"
 #include <random>
 namespace
 {
@@ -53,6 +54,16 @@ namespace
 		for (const TimelineStep& step : timeline)
 		{
 			if (step.pattern == BossPatternType::BorderAimedBurst)
+				return true;
+		}
+		return false;
+	}
+
+	bool ContainsLeavatein(const vector<TimelineStep>& timeline)
+	{
+		for(const TimelineStep& step : timeline)
+		{
+			if(step.pattern == BossPatternType::Leavatein)
 				return true;
 		}
 		return false;
@@ -141,12 +152,14 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	_convergingSpeedSpread = convergingSpeedSpread;
 	_convergingInterval = convergingInterval;
 	_convergingAngleSpread = convergingAngleSpread;
+
 	_hp = maxHp;
 	_curPhaseIndex = 0;
 	_phases = phases;
 	_phaseElapsedTime = 0.f;
 	_timelineIndex = 0;
 
+	
 	_moveTargetPos = Vector(GWinSizeX*0.5f, 150.f);
 
 	_moveTimerId = TimeManager::GetInstance().AddTimer([this]()
@@ -172,6 +185,13 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 		initBorderMarkers();
 		_borderBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootBorderAimedBurst(); }, _borderBurstInterval, true);
 	}
+	if (ContainsLeavatein(_phases[_curPhaseIndex].timeline))
+	{
+		_leavateinActive = true;
+		SetPos(Vector(GWinSizeX * 0.5f, 50.f));	// 레바테인은 항상 가운데(300,50)에서 시작
+		beginLeavateinAction((rand() % 2 == 0) ? LeavateinAction::SweepLeftStart : LeavateinAction::SweepRightStart);
+		_leavateinBulletTimerId = TimeManager::GetInstance().AddTimer([this]() { shootLeavateinBullets(); }, 0.2f, true);
+	}
 }
 
 void Boss::Destroy()
@@ -188,17 +208,27 @@ void Boss::Destroy()
 	TimeManager::GetInstance().Remove(_telegraphTimerId);
 	TimeManager::GetInstance().Remove(_burstShootTimerId);
 	TimeManager::GetInstance().Remove(_spreadShootTimerId);
+	_leavateinActive = false;
+	TimeManager::GetInstance().Remove(_leavateinBulletTimerId);
+	if (_leavateinLaser != nullptr)
+	{
+		_leavateinLaser->Destroy();
+		_leavateinLaser = nullptr;
+	}
 }
 
 void Boss::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
 
+	if (_leavateinActive)
+	{
+		updateLeavatein(deltaTime);
+	}
 	if (_borderBurstTimerId != -1)
 	{
 		updateBorderMarkers(deltaTime);
 	}
-
 	// 이 페이즈 동안엔 랜덤 이동 타이머가 뭘 정해놨든 무시하고 매 프레임 중앙을 목표로 고정한다.
 	if (_curPhaseIndex == _fixedPosPhaseIndex)
 	{
@@ -240,7 +270,8 @@ void Boss::Update(float deltaTime)
 		if (timeline[_timelineIndex].pattern != BossPatternType::Spiral &&
 			timeline[_timelineIndex].pattern != BossPatternType::Cross &&
 			timeline[_timelineIndex].pattern != BossPatternType::ConvergingBurst &&
-			timeline[_timelineIndex].pattern != BossPatternType::BorderAimedBurst)
+			timeline[_timelineIndex].pattern != BossPatternType::BorderAimedBurst&&
+			timeline[_timelineIndex].pattern != BossPatternType::Leavatein)
 		{
 			shootBullet(timeline[_timelineIndex].pattern);
 		}
@@ -374,10 +405,25 @@ void Boss::transitionToNextPhase()
 		_convergingBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootConvergingBurst(); }, _convergingInterval, true);
 	}
 	TimeManager::GetInstance().Remove(_borderBurstTimerId);
+	_borderBurstTimerId = -1;	// Remove()가 값으로 ID를 받아서 여기서 직접 리셋해야, 이전 페이즈의 마법진 렌더링/갱신 조건(!= -1)이 꺼진다.
 	if (ContainsBorderAimedBurst(_phases[_curPhaseIndex].timeline))
 	{
 		initBorderMarkers();
 		_borderBurstTimerId = TimeManager::GetInstance().AddTimer([this]() { shootBorderAimedBurst(); }, _borderBurstInterval, true);
+	}
+	_leavateinActive = false;
+	TimeManager::GetInstance().Remove(_leavateinBulletTimerId);
+	if(_leavateinLaser != nullptr)
+	{
+		_leavateinLaser->Destroy();
+		_leavateinLaser = nullptr;
+	}
+	if (ContainsLeavatein(_phases[_curPhaseIndex].timeline))
+	{
+		_leavateinActive = true;
+		SetPos(Vector(GWinSizeX * 0.5f, 50.f));	// 레바테인은 항상 가운데(300,50)에서 시작
+		beginLeavateinAction((rand() % 2 == 0) ? LeavateinAction::SweepLeftStart : LeavateinAction::SweepRightStart);
+		_leavateinBulletTimerId = TimeManager::GetInstance().AddTimer([this]() { shootLeavateinBullets(); }, 0.2f, true);
 	}
 }
 
@@ -482,6 +528,9 @@ void Boss::shootBullet(BossPatternType pattern)
 			_spreadShootTimerId = TimeManager::GetInstance().AddTimer([this]() {shootSpreadBullet();}, 1.f/ 30.f, true);
 			break;
 		}
+		case BossPatternType::Leavatein :
+			// TODO: Sweep/Slide 로직은 Update()에서 처리 예정
+			break;
 	}
 }
 
@@ -734,4 +783,190 @@ void Boss::shootSpreadBullet()
     }
 }
 
+// Reposition(칼날 없이 이동)이 끝난 뒤 어느 위치에서 다음 액션을 시작해야 하는지.
+// Sweep 두 종류는 둘 다 가운데에서 시작하고, Slide 두 종류는 출발 쪽 화면 끝에서 시작한다.
+Vector Boss::getLeavateinLaunchPos(LeavateinAction action) const
+{
+	switch (action)
+	{
+		case LeavateinAction::SweepLeftStart:
+		case LeavateinAction::SweepRightStart:
+			return Vector(GWinSizeX * 0.5f, 50.f);
+		case LeavateinAction::SlideToLeft:
+			return Vector((float)GWinSizeX, 50.f);	// 오른쪽 끝에서 출발해서 왼쪽으로
+		case LeavateinAction::SlideToRight:
+		default:
+			return Vector(0.f, 50.f);					// 왼쪽 끝에서 출발해서 오른쪽으로
+	}
+}
 
+// 방금 끝낸 액션(_leavateinLastAction)과 완전히 같은 것만 제외하고 나머지 3개 중 랜덤으로 고른다.
+void Boss::pickNextLeavateinAction()
+{
+	LeavateinAction all[4] = { LeavateinAction::SweepLeftStart, LeavateinAction::SweepRightStart,
+							    LeavateinAction::SlideToLeft, LeavateinAction::SlideToRight };
+	LeavateinAction candidates[3];
+	int32 count = 0;
+	for (LeavateinAction action : all)
+	{
+		if (action != _leavateinLastAction)
+			candidates[count++] = action;
+	}
+	_leavateinPendingAction = candidates[rand() % 3];
+}
+
+// Sweep/Slide가 끝나면 곧바로 다음 액션으로 넘어가지 않고, 칼날을 지운 채 0.5초 멈춰서
+// 화면에 남은 탄환이 빠질 시간을 준다. 0.5초 뒤 pickNextLeavateinAction()+startLeavateinReposition()으로 이어진다.
+void Boss::startLeavateinPause()
+{
+	if (_leavateinLaser != nullptr)
+	{
+		_leavateinLaser->Destroy();
+		_leavateinLaser = nullptr;
+	}
+
+	_leavateinPhase = LeavateinPhase::Pause;
+	_leavateinStateTimer = 0.f;
+}
+
+// _leavateinPendingAction의 시작 위치로 칼날 없이 이동을 시작한다(약 1초).
+// 이미 그 위치라면(가운데->가운데인 Sweep<->반대Sweep 전환) 이동 없이 바로 다음 액션을 시작한다.
+void Boss::startLeavateinReposition()
+{
+	if (_leavateinLaser != nullptr)
+	{
+		_leavateinLaser->Destroy();
+		_leavateinLaser = nullptr;
+	}
+
+	_leavateinMoveFrom = GetPos();
+	_leavateinMoveTo = getLeavateinLaunchPos(_leavateinPendingAction);
+	_leavateinStateTimer = 0.f;
+
+	if ((_leavateinMoveTo - _leavateinMoveFrom).Length() < 1.f)
+	{
+		beginLeavateinAction(_leavateinPendingAction);
+		return;
+	}
+
+	_leavateinPhase = LeavateinPhase::Reposition;
+}
+
+// 칼날을 새로 스폰하고 Sweep 또는 Slide 상태로 진입한다.
+void Boss::beginLeavateinAction(LeavateinAction action)
+{
+	_leavateinLastAction = action;
+	_leavateinStateTimer = 0.f;
+
+	if (action == LeavateinAction::SweepLeftStart || action == LeavateinAction::SweepRightStart)
+	{
+		bool startFromLeft = (action == LeavateinAction::SweepLeftStart);
+		float startAngle = startFromLeft ? 90.f : 270.f;		// 90=왼쪽, 270=오른쪽 (이 프로젝트 각도 기준)
+		float angularSpeed = startFromLeft ? 90.f : -90.f;		// 왼쪽 시작->증가(왼쪽->위->오른쪽->아래), 오른쪽 시작->감소
+
+		_leavateinLaser = Game::GetInstance().GetScene()->CreateLaser(GetPos(), startAngle, 750.f, 50, 11);
+		_leavateinLaser->_bladeTexture = ResourceManager::GetInstance().GetTexture(L"OrbRed");
+		_leavateinLaser->_guardTexture = ResourceManager::GetInstance().GetTexture(L"LeavateinGuard");
+		_leavateinLaser->SetAngularSpeed(angularSpeed);
+		_leavateinPhase = LeavateinPhase::Sweep;
+	}
+	else
+	{
+		_leavateinLaser = Game::GetInstance().GetScene()->CreateLaser(GetPos(), 0.f, 750.f, 50, 11);	// 0도 = 아래 고정
+		_leavateinLaser->_bladeTexture = ResourceManager::GetInstance().GetTexture(L"OrbRed");
+		_leavateinLaser->_guardTexture = ResourceManager::GetInstance().GetTexture(L"LeavateinGuard");
+		_leavateinLaser->SetAngularSpeed(0.f);
+
+		_leavateinMoveFrom = GetPos();
+		_leavateinMoveTo = (action == LeavateinAction::SlideToLeft) ? Vector(50.f, 80.f) : Vector((float)GWinSizeX - 50.f, 80.f);
+		_leavateinPhase = LeavateinPhase::Slide;
+	}
+}
+
+// 칼날 위에 9발을 균등 간격으로 배치해서, 칼날 방향에 직교하는 한쪽 방향(고정된 부호)으로 쏜다.
+// Sweep/Slide 두 상태 모두에서 계속 호출된다(_leavateinBulletTimerId, 0.2초 간격).
+void Boss::shootLeavateinBullets()
+{
+	if (_leavateinLaser == nullptr)
+		return;
+
+	Vector bladeDir = Vector(0, 1).Rotate(DegreeToRadian(_leavateinLaser->GetCurrentAngle()));
+
+	// SweepRightStart/SlideToRight는 SweepLeftStart/SlideToLeft를 좌우로 뒤집은 액션이라,
+	// 직교 방향도 같이 뒤집어야 시각적으로 "고정된 한쪽"이 유지된다.
+	float mirror = (_leavateinLastAction == LeavateinAction::SweepRightStart ||
+					_leavateinLastAction == LeavateinAction::SlideToRight) ? -1.f : 1.f;
+	Vector perpDir(-bladeDir.y * mirror, bladeDir.x * mirror);
+
+	Vector pivot = _leavateinLaser->GetPivot();
+	float length = _leavateinLaser->GetLength();
+
+	const int32 bulletCount = 9;
+	for (int32 i = 0; i < bulletCount; ++i)
+	{
+		float t = (float)i / (float)(bulletCount - 1);
+		Vector pos = pivot + bladeDir * (length * t);
+		Game::GetInstance().GetScene()->CreateBullet(pos, BulletType::Enemy, perpDir, 170.f);
+	}
+}
+
+void Boss::updateLeavatein(float deltaTime)
+{
+	switch (_leavateinPhase)
+	{
+		case LeavateinPhase::Sweep:
+		{
+			_leavateinStateTimer += deltaTime;
+			if (_leavateinStateTimer >= 3.0f)
+			{
+				startLeavateinPause();
+			}
+			break;
+		}
+		case LeavateinPhase::Pause:
+		{
+			_leavateinStateTimer += deltaTime;
+			if (_leavateinStateTimer >= 0.5f)
+			{
+				pickNextLeavateinAction();
+				startLeavateinReposition();
+			}
+			break;
+		}
+		case LeavateinPhase::Reposition:
+		{
+			_leavateinStateTimer += deltaTime;
+			float t = _leavateinStateTimer / 1.0f;
+			if (t > 1.0f) t = 1.0f;
+
+			SetPos(_leavateinMoveFrom + (_leavateinMoveTo - _leavateinMoveFrom) * t);
+
+			if (t >= 1.0f)
+			{
+				beginLeavateinAction(_leavateinPendingAction);
+			}
+			break;
+		}
+		case LeavateinPhase::Slide:
+		{
+			_leavateinStateTimer += deltaTime;
+			float t = _leavateinStateTimer / 2.0f;
+			if (t > 1.0f) t = 1.0f;
+
+			Vector pos = _leavateinMoveFrom + (_leavateinMoveTo - _leavateinMoveFrom) * t;
+			SetPos(pos);
+			if (_leavateinLaser != nullptr)
+				_leavateinLaser->SetPivot(pos);
+
+			if (t >= 1.0f)
+			{
+				startLeavateinPause();
+			}
+			break;
+		}
+	}
+
+	// 이 패턴이 보스 위치를 SetPos()로 직접 제어하는 동안, Update() 아래쪽의 랜덤 이동 시스템이
+	// 매 프레임 _moveTargetPos를 향해 또 이동시키지 않도록 목표를 현재 위치로 맞춰 무력화한다.
+	_moveTargetPos = GetPos();
+}

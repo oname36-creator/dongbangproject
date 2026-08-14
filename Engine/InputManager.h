@@ -39,6 +39,7 @@ enum class KeyType
 
 	F1 = VK_F1,
 	F2 = VK_F2,
+	F3 = VK_F3,
 };
 
 enum class KeyState

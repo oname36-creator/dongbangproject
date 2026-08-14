@@ -188,8 +188,89 @@ void Texture::RenderScreen(HDC hdc, Vector screenPos, Vector srcPos, Vector dest
 	}
 }
 
+void Texture::RenderRotated(HDC hdc, Vector centerPos, float radian, Vector destSize)
+{
+	if (destSize == Vector())
+		destSize = Vector((float)_bitmapSizeX, (float)_bitmapSizeY);
+
+	// 회전 전 로컬 기준의 3개 꼭짓점 계산 좌상, 우상, 좌하 순
+	float halfX = destSize.x / 2.f;
+	float halfY = destSize.y / 2.f;
+
+	Vector localCorners[3] = {
+		{ -halfX, -halfY }, // 좌상
+		{  halfX, -halfY }, // 우상
+		{ -halfX,  halfY }  // 좌하
+	};
+
+	// 삼각함수를 이용하여 3개 꼭짓점을 중심점(centerPos) 기준으로 월드 회전 변환
+	POINT destPoints[3];
+
+	for (int i = 0; i < 3; ++i)
+	{
+		Vector rotatePos = localCorners[i].Rotate(radian);
+
+		destPoints[i].x = static_cast<long>(rotatePos.x + centerPos.x);
+		destPoints[i].y = static_cast<long>(rotatePos.y + centerPos.y);
+	}
+
+	// 투명키 배경을 지우며 회전한다.
+	if (_transparent != -1)
+	{
+		// 회전 시 이미지가 빠져나가지 않도록 충분한 비트맵 대각선 크기 계산
+		int32 maxDim = static_cast<int32>(sqrt(destSize.x * destSize.x + destSize.y * destSize.y)) + 4;
+
+		if (!_tempDC || maxDim > _tempDim)
+		{
+			if (_tempDC) { ::DeleteDC(_tempDC); _tempDC = nullptr; }
+			if (_tempBitmap) { ::DeleteObject(_tempBitmap); _tempBitmap = nullptr; }
+
+			_tempDim = maxDim;
+			_tempDC = ::CreateCompatibleDC(hdc);
+			_tempBitmap = ::CreateCompatibleBitmap(hdc, _tempDim, _tempDim);
+			::SelectObject(_tempDC, _tempBitmap);
+		}
+
+		// 임시 버퍼의 배경을 투명 키값으로 통일해서 채워둔다.
+		HBRUSH bgBrush = ::CreateSolidBrush(_transparent);
+		RECT r = { 0, 0, _tempDim, _tempDim };
+		::FillRect(_tempDC, &r, bgBrush);
+		::DeleteObject(bgBrush);
+
+		// 임시 버퍼 내부의 정중앙에 회전된 꼭짓점이 맺히도록 오프셋 좌표 보정
+		POINT rotatedDestPoints[3];
+		float tempHalf = _tempDim / 2.f;
+
+		for (int i = 0; i < 3; ++i)
+		{
+			Vector rotatePos = localCorners[i].Rotate(radian);
+			rotatedDestPoints[i].x = static_cast<long>(rotatePos.x + tempHalf);
+			rotatedDestPoints[i].y = static_cast<long>(rotatePos.y + tempHalf);
+		}
+
+		::SetStretchBltMode(_tempDC, COLORONCOLOR);
+		// 임시 버퍼에 원본을 회전시켜서 찍는다.
+		::PlgBlt(_tempDC, rotatedDestPoints, _bitmapHdc, 0, 0, _bitmapSizeX, _bitmapSizeY, NULL, 0, 0);
+
+		// 배경 처리가 끝난 tempDC 자체를 실제 화면에 옮긴다 (여기서는 이미 회전된 결과라 그대로 복사만 하면 됨).
+		int32 drawX = (int32)(centerPos.x - tempHalf);
+		int32 drawY = (int32)(centerPos.y - tempHalf);
+
+		::TransparentBlt(hdc, drawX, drawY, _tempDim, _tempDim,
+			_tempDC, 0, 0, _tempDim, _tempDim, _transparent);
+	}
+	else
+	{
+		::SetStretchBltMode(hdc, COLORONCOLOR);
+		// 투명 키값이 없는 이미지라면 마스크 없이 원본 그대로 바로 PlgBlt 회전 수행
+		::PlgBlt(hdc, destPoints, _bitmapHdc, 0, 0, _bitmapSizeX, _bitmapSizeY, NULL, 0, 0);
+	}
+}
+
 Texture::~Texture()
 {
 	DeleteDC(_scratchHdc);
 	DeleteObject(_scratchBitmap);
+	DeleteDC(_tempDC);
+	DeleteObject(_tempBitmap);
 }

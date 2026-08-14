@@ -136,7 +136,8 @@ void Player::OnEnter(Actor* other)
 	// 적 총알 or 적 비행기 or 보스 몸체라면 피해입기
 	if (other->GetActorType() == ActorType::Enemy ||
 		other->GetActorType() == ActorType::EnemyBullet ||
-		other->GetActorType() == ActorType::Boss)
+		other->GetActorType() == ActorType::Boss ||
+		other->GetActorType() == ActorType::EnemyLaser)
 	{
 		takeDamage();
 	}

@@ -18,11 +18,30 @@ enum class BossPatternType
 	AimedSpread,
 	ConvergingBurst,	// 한 방향으로 3발이 각기 다른 속도로 동시에 나갔다가, 목표 속도로 수렴해서 나란히 정렬된다.
 	BorderAimedBurst,	// 마법진 6개가 화면 테두리를 따라 돌면서 쉬지 않고 조준탄을 쏜다(실험용).
+	Leavatein,
 };
 struct TimelineStep
 {
 	float time;
 	BossPatternType pattern;
+};
+
+enum class LeavateinPhase
+{
+	Sweep,		// pivot 고정한 채 270도 회전
+	Pause,		// Sweep/Slide가 끝난 직후, 칼날 없이 잠깐 멈춰서 화면의 탄환이 빠질 시간을 준다
+	Reposition,	// 칼날 없이 다음 액션의 시작 위치로 이동
+	Slide,		// 칼날 아래로 고정한 채 반대쪽 화면 끝까지 이동
+};
+
+// 레바테인이 반복하는 4가지 동작. 직전에 한 것과 "완전히 같은" 액션만 아니면
+// 나머지 3개 중 랜덤으로 다음 액션이 정해진다 (Boss::pickNextLeavateinAction 참고).
+enum class LeavateinAction
+{
+	SweepLeftStart,		// 가운데에서 왼쪽 시작 스윕
+	SweepRightStart,	// 가운데에서 오른쪽 시작 스윕
+	SlideToLeft,		// 오른쪽 끝에서 왼쪽 끝으로 슬라이드
+	SlideToRight,		// 왼쪽 끝에서 오른쪽 끝으로 슬라이드
 };
 
 struct BossPhase
@@ -38,7 +57,7 @@ enum class BossAnimState
 	Move,
 	Attack
 };
-
+class Laser;
 class Boss : public Airplane
 {
 	using Super = Airplane;
@@ -94,6 +113,14 @@ private:
 	void updateBorderMarkers(float deltaTime);
 	Vector getBorderCornerPos(int32 cornerIndex) const;
 	Vector getBorderMarkerPos(int32 markerIndex) const;
+
+	void updateLeavatein(float deltaTime);
+	void pickNextLeavateinAction();
+	void startLeavateinPause();
+	void startLeavateinReposition();
+	void beginLeavateinAction(LeavateinAction action);
+	Vector getLeavateinLaunchPos(LeavateinAction action) const;
+	void shootLeavateinBullets();
 
 private:
 	int32 _hp = 0;
@@ -226,4 +253,17 @@ private:
 	float _borderBulletSpeed = 100.f;
 	float _borderGlideDuration = 1.5f;
 	float _borderPauseDuration = 1.0f;
+
+	// Reposition 상태는 칼날이 없는(_leavateinLaser == nullptr) 구간이라, "패턴이 활성 중인지"는
+	// 칼날 존재 여부가 아니라 이 플래그로 따로 추적해야 한다.
+	bool _leavateinActive = false;
+	Laser* _leavateinLaser = nullptr;
+	LeavateinPhase _leavateinPhase = LeavateinPhase::Sweep;
+	float _leavateinStateTimer = 0.f;
+	int32 _leavateinBulletTimerId = -1;
+
+	LeavateinAction _leavateinLastAction = LeavateinAction::SweepLeftStart;	// 방금 끝낸 액션 (다음 액션 뽑을 때 이것만 제외)
+	LeavateinAction _leavateinPendingAction = LeavateinAction::SweepLeftStart;	// Reposition이 끝나면 시작할 액션
+	Vector _leavateinMoveFrom;	// Reposition/Slide 이동 시작 위치
+	Vector _leavateinMoveTo;	// Reposition/Slide 이동 목표 위치
 };
