@@ -81,6 +81,17 @@ namespace
 		return false;
 	}
 
+	// LoveMaze도 마찬가지.
+	bool ContainsLoveMaze(const vector<TimelineStep>& timeline)
+	{
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::LoveMaze)
+				return true;
+		}
+		return false;
+	}
+
 	// 카고메 카고메(6페이즈) 튜닝 상수.
 	constexpr float KAGOME_GRID_SPACING = 40.f;			// 격자탄 한 알 사이 간격
 	constexpr float KAGOME_LINE_START_STAGGER = 0.1f;		// 가로/세로 웨이브에서 줄마다 시작이 밀리는 간격
@@ -92,6 +103,20 @@ namespace
 	constexpr float KAGOME_DISRUPT_RADIUS = 45.f;			// 큰 탄 주변 이 반경 안의 격자탄이 흐트러진다
 	constexpr float KAGOME_SCATTER_SPEED = 130.f;			// 흐트러진 격자탄이 밀려나가는 속도
 	constexpr float KAGOME_SINGLE_BULLET_ANGLE = 20.f;		// 단발이 아래 기준 좌/우로 무작위로 기울어지는 각도
+
+	// 사랑의 미로(7페이즈) 튜닝 상수.
+	constexpr float LOVE_MAZE_GAP_WIDTH = 20.f;			// 항상 비어있는 구간의 각도 폭
+	constexpr int32 LOVE_MAZE_SPIRAL_ARM_COUNT = 1;
+	constexpr float LOVE_MAZE_SPIRAL_INTERVAL = 0.025f;		// 0.05 -> 0.025 (더 자주 발사해서 더 촘촘하게)
+	// 0.025초 간격 x 9도 = 초당 360도 = 대략 1초에 한 바퀴(회전 속도는 그대로 유지).
+	constexpr float LOVE_MAZE_SPIRAL_ROTATION_SPEED = 9.f;	// 발사마다 팔이 회전하는 각도
+	constexpr float LOVE_MAZE_SPIRAL_SPEED = 110.f;		// 220 -> 110 (속도 절반)
+	constexpr int32 LOVE_MAZE_CIRCLE_COUNT = 48;			// 24 -> 48 (탄환 갯수 2배)
+	constexpr float LOVE_MAZE_CIRCLE_INTERVAL = 0.8f;
+	constexpr float LOVE_MAZE_CIRCLE_ROTATION_SPEED = 15.f;	// 발사마다 링이 회전해서 겹겹이 쌓이는 효과
+	constexpr float LOVE_MAZE_CIRCLE_SPEED = 100.f;		// 200 -> 100 (속도 절반)
+	constexpr float LOVE_MAZE_SPIRAL_BULLET_RADIUS = 7.f;	// LoveMazeSpiralGreen 14x16 기준
+	constexpr float LOVE_MAZE_CIRCLE_BULLET_RADIUS = 7.f;	// LoveMazeCircleBlue 16x16 기준
 }
 
 void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
@@ -222,6 +247,10 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	{
 		startKagomeSpellcard();
 	}
+	if (ContainsLoveMaze(_phases[_curPhaseIndex].timeline))
+	{
+		startLoveMazeSpellcard();
+	}
 }
 
 void Boss::Destroy()
@@ -249,6 +278,7 @@ void Boss::Destroy()
 	TimeManager::GetInstance().Remove(_illusionWanderTimerId);
 
 	stopKagomeSpellcard();
+	stopLoveMazeSpellcard();
 
 	// 5페이즈 도중 보스가 죽으면 아직 살아있는 분신들도 같이 정리한다.
 	// Boss는 분신 포인터를 직접 들고 있지 않는다 — 분신이 플레이어 총알에 먼저 죽으면
@@ -289,6 +319,13 @@ void Boss::Update(float deltaTime)
 	{
 		_moveTargetPos = _illusionWanderTargetPos;
 	}
+	// 7페이즈(사랑의 미로) 동안은 Spiral/Circle이 같은 원점에서 나가야 대칭이 유지되므로 중앙 고정.
+	// _fixedPosPhaseIndex는 1페이즈가 이미 쓰고 있어서, 이 페이즈 전용 플래그(_loveMazeActive)를 그대로 쓴다.
+	// 다른 고정 페이즈들과 달리 화면 상단이 아니라 플레이 화면 전체의 정중앙에 고정한다.
+	if (_loveMazeActive)
+	{
+		_moveTargetPos = Vector(GWinSizeX * 0.5f, GWinSizeY * 0.5f);
+	}
 
 	Vector toTarget = _moveTargetPos - GetPos();
 	float distToTarget = toTarget.Length();
@@ -327,7 +364,8 @@ void Boss::Update(float deltaTime)
 			timeline[_timelineIndex].pattern != BossPatternType::ConvergingBurst &&
 			timeline[_timelineIndex].pattern != BossPatternType::BorderAimedBurst&&
 			timeline[_timelineIndex].pattern != BossPatternType::Leavatein &&
-			timeline[_timelineIndex].pattern != BossPatternType::Kagome)
+			timeline[_timelineIndex].pattern != BossPatternType::Kagome &&
+			timeline[_timelineIndex].pattern != BossPatternType::LoveMaze)
 		{
 			shootBullet(timeline[_timelineIndex].pattern);
 		}
@@ -500,6 +538,12 @@ void Boss::transitionToNextPhase()
 	{
 		startKagomeSpellcard();
 	}
+
+	stopLoveMazeSpellcard();
+	if (ContainsLoveMaze(_phases[_curPhaseIndex].timeline))
+	{
+		startLoveMazeSpellcard();
+	}
 }
 
 void Boss::shootBullet(BossPatternType pattern)
@@ -631,6 +675,9 @@ void Boss::shootBullet(BossPatternType pattern)
 		}
 		case BossPatternType::Kagome :
 			// Update()에서 이미 걸러내고 전용 상태머신(updateKagomeGrid/updateKagomeBurst)으로 처리하므로 여기선 아무것도 안 함.
+			break;
+		case BossPatternType::LoveMaze :
+			// Update()에서 이미 걸러내고 전용 타이머(shootLoveMazeSpiral/shiftLoveMazeGapAndFireCircle)로 처리하므로 여기선 아무것도 안 함.
 			break;
 	}
 }
@@ -1439,4 +1486,101 @@ void Boss::updateKagomeDisruption(float deltaTime)
 			bullet->SetVelocity(away, KAGOME_SCATTER_SPEED);
 		}
 	}
+}
+
+// ============================================================
+// 7페이즈: 사랑의 미로
+// Spiral(연속 회전 발사)과 Circle(주기적 링 발사)이 완전히 독립된 타이머로 동시에 돌되,
+// 하나의 공유 상태(_loveMazeGapAngle)를 통해 항상 같은 20도 구간을 비우고 쏜다.
+// 그 구간을 이동시키는 쪽은 Spiral뿐이고(새 팔이 나갈 때마다 양옆 중 무작위로 한 칸),
+// Circle은 그 시점의 값을 그냥 읽기만 한다.
+// ============================================================
+
+void Boss::startLoveMazeSpellcard()
+{
+	_loveMazeActive = true;
+	_loveMazeGapAngle = (float)(rand() % 18) * LOVE_MAZE_GAP_WIDTH;	// 0,20,40...340 중 무작위 시작 위치
+	_loveMazeSpiralAngle = 0.f;
+	_loveMazeCircleAngle = 0.f;
+
+	TimeManager::GetInstance().Remove(_loveMazeSpiralTimerId);
+	_loveMazeSpiralTimerId = TimeManager::GetInstance().AddTimer([this]() { shootLoveMazeSpiral(); }, LOVE_MAZE_SPIRAL_INTERVAL, true);
+
+	TimeManager::GetInstance().Remove(_loveMazeCircleTimerId);
+	_loveMazeCircleTimerId = TimeManager::GetInstance().AddTimer([this]() { shiftLoveMazeGapAndFireCircle(); }, LOVE_MAZE_CIRCLE_INTERVAL, true);
+}
+
+void Boss::stopLoveMazeSpellcard()
+{
+	_loveMazeActive = false;
+	TimeManager::GetInstance().Remove(_loveMazeSpiralTimerId);
+	_loveMazeSpiralTimerId = -1;
+	TimeManager::GetInstance().Remove(_loveMazeCircleTimerId);
+	_loveMazeCircleTimerId = -1;
+}
+
+// angleDeg가 [_loveMazeGapAngle, _loveMazeGapAngle + LOVE_MAZE_GAP_WIDTH) 안에 들어가는지.
+bool Boss::isAngleInLoveMazeGap(float angleDeg) const
+{
+	float diff = fmodf(angleDeg - _loveMazeGapAngle + 720.f, 360.f);	// 720 더해서 fmodf 음수 입력을 피한다
+	return diff < LOVE_MAZE_GAP_WIDTH;
+}
+
+void Boss::shootLoveMazeSpiral()
+{
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_attackPoseTimer = 0.3f;
+
+	for (int32 i = 0; i < LOVE_MAZE_SPIRAL_ARM_COUNT; ++i)
+	{
+		float angleDeg = fmodf(_loveMazeSpiralAngle + i * (360.f / LOVE_MAZE_SPIRAL_ARM_COUNT) + 720.f, 360.f);
+		if (isAngleInLoveMazeGap(angleDeg))
+			continue;
+
+		float radian = DegreeToRadian(angleDeg);
+		scene->CreateBullet(GetPos(), BulletType::Enemy, Vector(cosf(radian), sinf(radian)), LOVE_MAZE_SPIRAL_SPEED,
+			false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None, L"LoveMazeSpiralGreen", LOVE_MAZE_SPIRAL_BULLET_RADIUS);
+	}
+
+	_loveMazeSpiralAngle += LOVE_MAZE_SPIRAL_ROTATION_SPEED;
+
+	// 빈 구간은 여기서 옮기지 않는다: shiftLoveMazeGapAndFireCircle()이 갭 이동과 Circle 발사를
+	// 같은 순간에 묶어서 처리한다. Spiral은 그 사이(0.1초 간격)엔 그냥 현재 갭을 그대로 따라 돈다.
+}
+
+// LOVE_MAZE_CIRCLE_INTERVAL마다 호출된다. 갭을 옮기는 것과 Circle을 쏘는 것을 같은 순간에 묶어서,
+// "갭이 빠지는 시점"과 "Circle 링이 만들어지는 시점"이 항상 정확히 일치하게 한다 — 이게 어긋나면
+// Circle 링과 Spiral 궤적의 구멍이 서로 다른 각도가 되어 미로 모양이 안 나온다.
+void Boss::shiftLoveMazeGapAndFireCircle()
+{
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_loveMazeGapAngle += (rand() % 2 == 0) ? LOVE_MAZE_GAP_WIDTH : -LOVE_MAZE_GAP_WIDTH;
+	_loveMazeGapAngle = fmodf(_loveMazeGapAngle + 360.f, 360.f);
+
+	_attackPoseTimer = 0.3f;
+
+	for (int32 i = 0; i < LOVE_MAZE_CIRCLE_COUNT; ++i)
+	{
+		float angleDeg = fmodf(_loveMazeCircleAngle + i * (360.f / LOVE_MAZE_CIRCLE_COUNT) + 720.f, 360.f);
+		if (isAngleInLoveMazeGap(angleDeg))
+			continue;
+
+		float radian = DegreeToRadian(angleDeg);
+		scene->CreateBullet(GetPos(), BulletType::Enemy, Vector(cosf(radian), sinf(radian)), LOVE_MAZE_CIRCLE_SPEED,
+			false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None, L"LoveMazeCircleBlue", LOVE_MAZE_CIRCLE_BULLET_RADIUS);
+	}
+
+	_loveMazeCircleAngle += LOVE_MAZE_CIRCLE_ROTATION_SPEED;	// 쏠 때마다 살짝 회전시켜 겹겹이 쌓이는 효과
 }

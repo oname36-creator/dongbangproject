@@ -176,7 +176,10 @@ static const vector<BossPhase> g_extraBossPhases =
 	{ { { 0.f, BossPatternType::IllusionBurst } }, 1.0f, 2500 },
 	// 6페이즈: "카고메 카고메". 격자탄 웨이브(가로+세로 / 대각선 번갈아 생성)와 큰 탄 리듬(단발/부채꼴)이
 	// 서로 독립된 타이머로 동시에 진행되고, 큰 탄이 지나가는 자리의 격자탄은 흐트러진다(Boss::updateKagomeDisruption).
-	{ { { 0.f, BossPatternType::Kagome } }, 1.0f, 0 }
+	{ { { 0.f, BossPatternType::Kagome } }, 1.0f, 2000 },
+	// 7페이즈: "사랑의 미로". Spiral(연속 회전)과 Circle(주기적 링)이 동시에 돌면서, 항상 같은 20도
+	// 빈 구간을 비우고 쏜다. 그 구간은 Spiral이 팔을 새로 쏠 때마다 양옆 중 무작위로 한 칸씩 이동한다.
+	{ { { 0.f, BossPatternType::LoveMaze } }, 1.0f, 0 }
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.

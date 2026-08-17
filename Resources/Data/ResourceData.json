@@ -37,6 +37,8 @@
     "GridBulletRed": { "fileName": "GridBulletRed.bmp", "transparent": [255, 0, 255] },
     "KagomeGridBulletGreen": { "fileName": "KagomeGridBulletGreen.bmp", "transparent": [255, 0, 255] },
     "KagomeBigBulletYellow": { "fileName": "KagomeBigBulletYellow.bmp", "transparent": [255, 0, 255] },
+    "LoveMazeSpiralGreen": { "fileName": "LoveMazeSpiralGreen.bmp", "transparent": [255, 0, 255] },
+    "LoveMazeCircleBlue": { "fileName": "LoveMazeCircleBlue.bmp", "transparent": [255, 0, 255] },
     "AimedBurstBullet": { "fileName": "AimedBurstBullet.bmp", "transparent": [255, 0, 255] },
     "AimedBurstBulletBig": { "fileName": "AimedBurstBulletBig.bmp", "transparent": [255, 0, 255] },
     "MagicCircle": { "fileName": "MagicCircle.bmp", "transparent": [255, 0, 255] },

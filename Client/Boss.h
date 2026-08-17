@@ -21,6 +21,7 @@ enum class BossPatternType
 	Leavatein,
 	IllusionBurst,	// 5페이즈 전용: Circle/Fan 중 하나를 매 사이클마다 무작위로 골라 쏜다.
 	Kagome,	// 6페이즈 전용: "카고메 카고메". 격자탄 웨이브 + 큰 탄 리듬이 서로 독립된 타이머로 동시에 진행된다.
+	LoveMaze,	// 7페이즈 전용: "사랑의 미로". Spiral+Circle이 동시에 계속 돌면서, 둘 다 같은 20도 빈 구간을 비우고 쏜다.
 };
 struct TimelineStep
 {
@@ -178,6 +179,14 @@ private:
 	void shootKagomeSingleBullet();
 	void shootKagomeFanBullets();
 	void trackKagomeBigBullet(Vector origin, Vector dir, float speed);
+
+	// 7페이즈(사랑의 미로): Spiral과 Circle이 완전히 독립된 타이머로 동시에 돌되,
+	// 하나의 공유 상태(_loveMazeGapAngle)를 통해 같은 20도 구간을 비운다.
+	void startLoveMazeSpellcard();
+	void stopLoveMazeSpellcard();
+	bool isAngleInLoveMazeGap(float angleDeg) const;
+	void shootLoveMazeSpiral();				// 0.1초마다 팔을 쏜다. 그 시점의 빈 구간을 그대로 따라간다(갭을 옮기지는 않음).
+	void shiftLoveMazeGapAndFireCircle();		// 빈 구간을 양옆 중 무작위로 한 칸 이동시키는 것과 Circle 발사를 같은 순간에 묶어서 처리한다.
 
 private:
 	int32 _hp = 0;
@@ -354,4 +363,12 @@ private:
 	KagomeBurstState _kagomeBurstState = KagomeBurstState::Warmup;
 	float _kagomeBurstTimer = 0.f;
 	KagomeBigBulletShadow _kagomeBigBulletShadows[8];
+
+	// 7페이즈: 사랑의 미로.
+	bool _loveMazeActive = false;
+	float _loveMazeGapAngle = 0.f;		// 현재 비어있는 20도 구간의 시작 각도(월드 기준, [gapAngle, gapAngle+20) 비움)
+	int32 _loveMazeSpiralTimerId = -1;
+	int32 _loveMazeCircleTimerId = -1;
+	float _loveMazeSpiralAngle = 0.f;	// 이 스펠카드 전용 spiral 회전각
+	float _loveMazeCircleAngle = 0.f;	// 이 스펠카드 전용 circle 회전각(겹겹이 쌓이는 효과용)
 };
