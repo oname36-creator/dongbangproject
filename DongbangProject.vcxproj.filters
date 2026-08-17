@@ -88,6 +88,9 @@
     <ClInclude Include="Client\Enemy.h">
       <Filter>Client\Actors</Filter>
     </ClInclude>
+    <ClInclude Include="Client\BossIllusion.h">
+      <Filter>Client\Actors</Filter>
+    </ClInclude>
     <ClInclude Include="Client\Item.h">
       <Filter>Client\Actors</Filter>
     </ClInclude>
@@ -217,6 +220,9 @@
       <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp">
+      <Filter>Client\Actors</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\BossIllusion.cpp">
       <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Item.cpp">

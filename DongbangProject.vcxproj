@@ -147,6 +147,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Client\Enemy.h" />
+    <ClInclude Include="Client\BossIllusion.h" />
     <ClInclude Include="Client\Item.h" />
     <ClInclude Include="Client\Laser.h" />
     <ClInclude Include="Client\LaserSegment.h" />
@@ -202,6 +203,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp" />
+    <ClCompile Include="Client\BossIllusion.cpp" />
     <ClCompile Include="Client\Item.cpp" />
     <ClCompile Include="Client\Laser.cpp" />
     <ClCompile Include="Client\LaserSegment.cpp" />

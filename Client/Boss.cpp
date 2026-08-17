@@ -10,6 +10,7 @@
 #include "ResourceManager.h"
 #include "Texture.h"
 #include "Laser.h"
+#include "BossIllusion.h"
 #include <random>
 namespace
 {
@@ -68,6 +69,29 @@ namespace
 		}
 		return false;
 	}
+
+	// Kagome도 마찬가지로, 타임라인에 있는지만 확인해서 전용 상태머신을 켠다.
+	bool ContainsKagome(const vector<TimelineStep>& timeline)
+	{
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::Kagome)
+				return true;
+		}
+		return false;
+	}
+
+	// 카고메 카고메(6페이즈) 튜닝 상수.
+	constexpr float KAGOME_GRID_SPACING = 40.f;			// 격자탄 한 알 사이 간격
+	constexpr float KAGOME_LINE_START_STAGGER = 0.1f;		// 가로/세로 웨이브에서 줄마다 시작이 밀리는 간격
+	constexpr float KAGOME_BULLET_SPAWN_INTERVAL = 0.05f;	// 한 줄 안에서 탄이 한 알씩 생기는 간격
+	constexpr float KAGOME_GRID_BULLET_RADIUS = 7.f;		// 격자탄 콜라이더(KagomeGridBulletGreen 16x16 기준)
+	constexpr float KAGOME_GRID_BULLET_LIFETIME = 6.0f;	// 이 시간이 지나면 위치와 무관하게 자동 소멸(풀 고갈 방지)
+	constexpr float KAGOME_BIG_BULLET_SPEED = 220.f;
+	constexpr float KAGOME_BIG_BULLET_RADIUS = 35.f;		// 격자탄(13.5)과 정수 반지름이 겹치지 않도록 충분히 큰 값
+	constexpr float KAGOME_DISRUPT_RADIUS = 45.f;			// 큰 탄 주변 이 반경 안의 격자탄이 흐트러진다
+	constexpr float KAGOME_SCATTER_SPEED = 130.f;			// 흐트러진 격자탄이 밀려나가는 속도
+	constexpr float KAGOME_SINGLE_BULLET_ANGLE = 20.f;		// 단발이 아래 기준 좌/우로 무작위로 기울어지는 각도
 }
 
 void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
@@ -88,7 +112,8 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 			wstring circleDelayedAimedTextureKey, wstring circleDelayedRandomTextureKey,
 			int32 fixedPosPhaseIndex, float circleRotationSpeed,
 			float convergingSpeed, float convergingSpeedSpread, float convergingInterval,
-			float convergingAngleSpread)
+			float convergingAngleSpread,
+			int32 illusionPhaseIndex)
 {
 	SetPos(pos);
 
@@ -152,6 +177,7 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	_convergingSpeedSpread = convergingSpeedSpread;
 	_convergingInterval = convergingInterval;
 	_convergingAngleSpread = convergingAngleSpread;
+	_illusionPhaseIndex = illusionPhaseIndex;
 
 	_hp = maxHp;
 	_curPhaseIndex = 0;
@@ -192,6 +218,10 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 		beginLeavateinAction((rand() % 2 == 0) ? LeavateinAction::SweepLeftStart : LeavateinAction::SweepRightStart);
 		_leavateinBulletTimerId = TimeManager::GetInstance().AddTimer([this]() { shootLeavateinBullets(); }, 0.2f, true);
 	}
+	if (ContainsKagome(_phases[_curPhaseIndex].timeline))
+	{
+		startKagomeSpellcard();
+	}
 }
 
 void Boss::Destroy()
@@ -215,6 +245,20 @@ void Boss::Destroy()
 		_leavateinLaser->Destroy();
 		_leavateinLaser = nullptr;
 	}
+
+	TimeManager::GetInstance().Remove(_illusionWanderTimerId);
+
+	stopKagomeSpellcard();
+
+	// 5페이즈 도중 보스가 죽으면 아직 살아있는 분신들도 같이 정리한다.
+	// Boss는 분신 포인터를 직접 들고 있지 않는다 — 분신이 플레이어 총알에 먼저 죽으면
+	// scene이 그 인스턴스를 delete하므로, Boss가 포인터를 들고 있으면 댕글링 위험이 있다.
+	// 대신 scene에 "Boss 레이어에 남은 분신 전부 정리해줘"라고 요청한다.
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene != nullptr)
+	{
+		scene->ClearBossIllusions();
+	}
 }
 
 void Boss::Update(float deltaTime)
@@ -229,10 +273,21 @@ void Boss::Update(float deltaTime)
 	{
 		updateBorderMarkers(deltaTime);
 	}
+	if (_kagomeActive)
+	{
+		updateKagomeGrid(deltaTime);
+		updateKagomeBurst(deltaTime);
+		updateKagomeDisruption(deltaTime);
+	}
 	// 이 페이즈 동안엔 랜덤 이동 타이머가 뭘 정해놨든 무시하고 매 프레임 중앙을 목표로 고정한다.
 	if (_curPhaseIndex == _fixedPosPhaseIndex)
 	{
 		_moveTargetPos = Vector(GWinSizeX * 0.5f, 150.f);
+	}
+	// 5페이즈 동안은 분신들과 같은 방식으로, 배정된 자리(_illusionBossSlot) 주변에서 배회한다.
+	if (_curPhaseIndex == _illusionPhaseIndex)
+	{
+		_moveTargetPos = _illusionWanderTargetPos;
 	}
 
 	Vector toTarget = _moveTargetPos - GetPos();
@@ -271,7 +326,8 @@ void Boss::Update(float deltaTime)
 			timeline[_timelineIndex].pattern != BossPatternType::Cross &&
 			timeline[_timelineIndex].pattern != BossPatternType::ConvergingBurst &&
 			timeline[_timelineIndex].pattern != BossPatternType::BorderAimedBurst&&
-			timeline[_timelineIndex].pattern != BossPatternType::Leavatein)
+			timeline[_timelineIndex].pattern != BossPatternType::Leavatein &&
+			timeline[_timelineIndex].pattern != BossPatternType::Kagome)
 		{
 			shootBullet(timeline[_timelineIndex].pattern);
 		}
@@ -379,6 +435,14 @@ void Boss::transitionToNextPhase()
 	// 기존 탄 삭제
 	Game::GetInstance().GetScene()->ClearEnemyBullets();
 
+	// 5페이즈(분신 소환 페이즈)를 벗어나면, 아직 살아있는 분신들을 정리한다.
+	// (본체가 죽었을 때의 Destroy()와 같은 정리를, 페이즈 전환 시점에도 해줘야 한다.)
+	if (_curPhaseIndex == _illusionPhaseIndex)
+	{
+		TimeManager::GetInstance().Remove(_illusionWanderTimerId);
+		Game::GetInstance().GetScene()->ClearBossIllusions();
+	}
+
 	// 짧은 연출 (일단은 이펙트로 대체 - Day4는 뼈대만 있으면 됨)
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());
 
@@ -425,6 +489,17 @@ void Boss::transitionToNextPhase()
 		beginLeavateinAction((rand() % 2 == 0) ? LeavateinAction::SweepLeftStart : LeavateinAction::SweepRightStart);
 		_leavateinBulletTimerId = TimeManager::GetInstance().AddTimer([this]() { shootLeavateinBullets(); }, 0.2f, true);
 	}
+
+	if (_curPhaseIndex == _illusionPhaseIndex)
+	{
+		spawnIllusionClones();
+	}
+
+	stopKagomeSpellcard();
+	if (ContainsKagome(_phases[_curPhaseIndex].timeline))
+	{
+		startKagomeSpellcard();
+	}
 }
 
 void Boss::shootBullet(BossPatternType pattern)
@@ -434,16 +509,32 @@ void Boss::shootBullet(BossPatternType pattern)
 	switch(pattern)
 	{
 		case BossPatternType::Fan :
+		{
+			// 5페이즈(IllusionBurst 경유)에서는 본체 몫 색상(_fanTextureKeyAlt)을 쓴다.
+			bool useIllusionAlt = (_curPhaseIndex == _illusionPhaseIndex);
+			wstring fanTexture = useIllusionAlt ? _fanTextureKeyAlt : _fanTextureKey;
+			// IllusionFan 텍스처는 32x32라, 자동 콜라이더(GetSizeX()-3=29)를 쓰면 스프라이트보다 훨씬 커진다.
+			// 30x30 텍스처에 13.5를 쓴 CircleBulletYellow 사례처럼 절반 정도로 명시해준다.
+			float fanColliderSize = useIllusionAlt ? 14.f : (fanTexture.empty() ? -1.f : _faceDirectionColliderSize);
 			Game::GetInstance().GetScene()->FireFan(GetPos(), BulletType::Enemy, Vector(0,1), _fanAngleSpread,
 				(int32)(_fanShotCount * _bulletCountMul), 300.f * _bulletSpeedMul,
-				_fanTextureKey, _fanTextureKey.empty() ? -1.f : _faceDirectionColliderSize, _bulletsFaceDirection);
+				fanTexture, fanColliderSize, useIllusionAlt ? false : _bulletsFaceDirection);
 			break;
+		}
 		case BossPatternType::Circle :
+		{
+			// 5페이즈에서는 _circleTextureKeyAlt(고리형 탄)를 쓴다.
+			bool useIllusionAlt = (_curPhaseIndex == _illusionPhaseIndex);
+			wstring circleTexture = useIllusionAlt ? _circleTextureKeyAlt : _circleTextureKey;
+			// IllusionCircle은 16x16인데 자동 콜라이더(GetSizeX()-3=13)는 CircleBulletYellow(30x30->13.5)
+			// 등 다른 텍스처들이 쓰는 "절반 정도" 비율(약 0.45배)보다 훨씬 크다. 같은 비율로 맞춘다.
+			float circleColliderSize = useIllusionAlt ? 7.f : _circleColliderSize;
 			Game::GetInstance().GetScene()->FireCircle(GetPos(), BulletType::Enemy,
 				(int32)(_circleShotCount * _bulletCountMul), 300.f * _bulletSpeedMul,
-				0.f, 0.f, BulletRedirectMode::None, _circleTextureKey, _circleColliderSize, _bulletsFaceDirection, _circleAngle);
+				0.f, 0.f, BulletRedirectMode::None, circleTexture, circleColliderSize, useIllusionAlt ? false : _bulletsFaceDirection, _circleAngle);
 			_circleAngle += _circleRotationSpeed;	// 다음 Circle은 이만큼 회전된 각도에서 시작 (0이면 매번 그대로)
 			break;
+		}
 		case BossPatternType::AimedBurst :
 		{
 			Vector dir(0, 1);
@@ -530,6 +621,16 @@ void Boss::shootBullet(BossPatternType pattern)
 		}
 		case BossPatternType::Leavatein :
 			// TODO: Sweep/Slide 로직은 Update()에서 처리 예정
+			break;
+		case BossPatternType::IllusionBurst :
+		{
+			// Circle/Fan을 동시에 쏘지 않고, 매 사이클마다 둘 중 하나만 무작위로 골라 쏜다.
+			BossPatternType chosen = (rand() % 2 == 0) ? BossPatternType::Circle : BossPatternType::Fan;
+			shootBullet(chosen);
+			break;
+		}
+		case BossPatternType::Kagome :
+			// Update()에서 이미 걸러내고 전용 상태머신(updateKagomeGrid/updateKagomeBurst)으로 처리하므로 여기선 아무것도 안 함.
 			break;
 	}
 }
@@ -906,7 +1007,9 @@ void Boss::shootLeavateinBullets()
 	{
 		float t = (float)i / (float)(bulletCount - 1);
 		Vector pos = pivot + bladeDir * (length * t);
-		Game::GetInstance().GetScene()->CreateBullet(pos, BulletType::Enemy, perpDir, 170.f);
+		// faceDirection=true: 회전 프레임(LeavateinBullet_000~180)이 perpDir을 보고 돌아간다.
+		Game::GetInstance().GetScene()->CreateBullet(pos, BulletType::Enemy, perpDir, 170.f, false, 180.f, 0.f,
+			0.f, 0.f, BulletRedirectMode::None, L"LeavateinBullet", 8.f, true);
 	}
 }
 
@@ -926,7 +1029,7 @@ void Boss::updateLeavatein(float deltaTime)
 		case LeavateinPhase::Pause:
 		{
 			_leavateinStateTimer += deltaTime;
-			if (_leavateinStateTimer >= 0.5f)
+			if (_leavateinStateTimer >= 1.0f)
 			{
 				pickNextLeavateinAction();
 				startLeavateinReposition();
@@ -969,4 +1072,371 @@ void Boss::updateLeavatein(float deltaTime)
 	// 이 패턴이 보스 위치를 SetPos()로 직접 제어하는 동안, Update() 아래쪽의 랜덤 이동 시스템이
 	// 매 프레임 _moveTargetPos를 향해 또 이동시키지 않도록 목표를 현재 위치로 맞춰 무력화한다.
 	_moveTargetPos = GetPos();
+}
+
+// 화면 상단에 x축으로 4등분한 자리를 만들고, 그중 하나를 무작위로 본체 몫으로 배정한다.
+// 나머지 3자리에는 분신이 화면 위에서 내려와 스폰된다 (BossIllusion의 입장 연출).
+// 본체가 몇 번째 자리인지 매번 랜덤이라, 대형만 보고는 진짜를 알 수 없다.
+void Boss::spawnIllusionClones()
+{
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	const float slotXs[4] = { GWinSizeX * 0.2f, GWinSizeX * 0.4f, GWinSizeX * 0.6f, GWinSizeX * 0.8f };
+	constexpr float slotY = 120.f;
+
+	// slotOrder를 섞어서 앞의 한 자리를 본체, 나머지 세 자리를 분신 몫으로 나눈다.
+	int32 slotOrder[4] = { 0, 1, 2, 3 };
+	for (int32 i = 3; i > 0; --i)
+	{
+		int32 j = rand() % (i + 1);
+		int32 tmp = slotOrder[i];
+		slotOrder[i] = slotOrder[j];
+		slotOrder[j] = tmp;
+	}
+
+	_illusionBossSlot = Vector(slotXs[slotOrder[0]], slotY);
+	_illusionWanderTargetPos = _illusionBossSlot;
+
+	// 분신들처럼 본체도 배정된 자리 주변에서 배회하도록, 1.5초마다 목표점을 재선정.
+	TimeManager::GetInstance().Remove(_illusionWanderTimerId);
+	_illusionWanderTimerId = TimeManager::GetInstance().AddTimer([this]()
+	{
+		float radian = DegreeToRadian((float)(rand() % 360));
+		float radius = (float)(rand() % ((int32)_illusionWanderRadius + 1));
+		_illusionWanderTargetPos = _illusionBossSlot + Vector(cosf(radian), sinf(radian)) * radius;
+	}, 1.5f, true);
+
+	const float shootOffsets[3] = { 0.2f, 0.4f, 0.6f };	// 본체(t=0)와 겹치지 않게 순차적으로 캐스케이드
+	// 본체는 _fanTextureKeyAlt(Red)를 쓰므로, 분신 3체는 나머지 색으로 겹치지 않게 배정한다.
+	const wstring cloneFanColors[3] = { L"IllusionFanBlue", L"IllusionFanGreen", L"IllusionFanYellow" };
+	for (int32 i = 0; i < 3; ++i)
+	{
+		Vector slotPos(slotXs[slotOrder[i + 1]], slotY);
+		scene->CreateBossIllusion(slotPos, _baseKey, 200, shootOffsets[i], cloneFanColors[i]);
+	}
+}
+
+// ============================================================
+// 6페이즈: 카고메 카고메
+// 격자탄 웨이브(startKagomeGridWave/advanceKagomeLine)와 큰 탄 리듬(updateKagomeBurst)은
+// 서로의 상태를 전혀 참조하지 않는 완전히 독립된 두 상태머신이다. 유일한 접점은
+// updateKagomeDisruption()이 큰 탄의 현재 위치 주변 격자탄을 지우는 부분뿐이다.
+// ============================================================
+
+void Boss::startKagomeSpellcard()
+{
+	_kagomeActive = true;
+
+	for (KagomeGridLine& line : _kagomeLines)
+		line.active = false;
+	for (KagomeBigBulletShadow& shadow : _kagomeBigBulletShadows)
+		shadow.active = false;
+	_kagomeDiagonalBackslashPending = false;
+
+	// startKagomeGridWave()가 매번 웨이브 종류를 반대로 토글하므로, 반대값에서 시작해야
+	// 페이즈 진입 직후 첫 웨이브가 원하는 종류(가로+세로)로 나온다.
+	_kagomeGridWaveType = KagomeGridWaveType::Diagonal;
+	startKagomeGridWave();
+
+	TimeManager::GetInstance().Remove(_kagomeGridWaveTimerId);
+	_kagomeGridWaveTimerId = TimeManager::GetInstance().AddTimer([this]() { startKagomeGridWave(); }, 3.0f, true);
+
+	_kagomeBurstState = KagomeBurstState::Warmup;
+	_kagomeBurstTimer = 0.f;
+}
+
+void Boss::stopKagomeSpellcard()
+{
+	_kagomeActive = false;
+	TimeManager::GetInstance().Remove(_kagomeGridWaveTimerId);
+	_kagomeGridWaveTimerId = -1;
+	_kagomeDiagonalBackslashPending = false;
+
+	for (KagomeGridLine& line : _kagomeLines)
+		line.active = false;
+	for (KagomeBigBulletShadow& shadow : _kagomeBigBulletShadows)
+		shadow.active = false;
+}
+
+// 3초마다 호출된다: 이전 웨이브 상태를 지우고, 웨이브 종류를 토글해서 새 웨이브를 세팅한다.
+void Boss::startKagomeGridWave()
+{
+	if (_isDead)
+		return;
+
+	_kagomeGridWaveType = (_kagomeGridWaveType == KagomeGridWaveType::HorizontalVertical)
+		? KagomeGridWaveType::Diagonal : KagomeGridWaveType::HorizontalVertical;
+
+	for (KagomeGridLine& line : _kagomeLines)
+		line.active = false;
+	_kagomeDiagonalBackslashPending = false;
+
+	if (_kagomeGridWaveType == KagomeGridWaveType::HorizontalVertical)
+	{
+		// 화면(600x800)을 4등분한 자리에 가로 4줄 + 세로 4줄. 시작점은 줄마다 좌/우, 상/하로 번갈아진다.
+		const float rowYs[4] = { 150.f, 300.f, 450.f, 600.f };
+		// 오른쪽에서 1~4번: 1번(480)/4번(120)은 그대로. 2번은 360->460(+100)했다가 다시
+		// 반대 방향(왼쪽)으로 30 되돌려 430, 3번은 240->140(-100)했다가 반대 방향(오른쪽)으로
+		// 30 되돌려 170. 가운데 회피 공간을 넓히되 좌우 끝쪽 두 줄이 너무 붙지 않게 조정.
+		const float colXs[4] = { 120.f, 170.f, 430.f, 480.f };
+
+		for (int32 i = 0; i < 4; ++i)
+		{
+			bool startLeft = (i % 2 == 0);
+			KagomeGridLine& line = _kagomeLines[i];
+			line.active = true;
+			line.pos = Vector(startLeft ? 0.f : (float)GWinSizeX, rowYs[i]);
+			line.step = Vector(startLeft ? KAGOME_GRID_SPACING : -KAGOME_GRID_SPACING, 0.f);
+			line.remainingBullets = (int32)((float)GWinSizeX / KAGOME_GRID_SPACING) + 1;
+			line.startDelay = i * KAGOME_LINE_START_STAGGER;
+			line.spawnTimer = 0.f;
+		}
+		for (int32 i = 0; i < 4; ++i)
+		{
+			bool startTop = (i % 2 == 0);
+			KagomeGridLine& line = _kagomeLines[4 + i];
+			line.active = true;
+			line.pos = Vector(colXs[i], startTop ? 0.f : (float)GWinSizeY);
+			line.step = Vector(0.f, startTop ? KAGOME_GRID_SPACING : -KAGOME_GRID_SPACING);
+			line.remainingBullets = (int32)((float)GWinSizeY / KAGOME_GRID_SPACING) + 1;
+			line.startDelay = (4 + i) * KAGOME_LINE_START_STAGGER;
+			line.spawnTimer = 0.f;
+		}
+	}
+	else
+	{
+		// "/" 방향 3줄: 화면 아래쪽 모서리를 따라 균등 간격으로 동시에 시작해서 우상향으로 뻗어나간다.
+		const float startXs[3] = { 100.f, 300.f, 500.f };
+		Vector slashDir(1.f, -1.f);
+		slashDir.Normalize();
+		int32 slashCount = (int32)(((float)GWinSizeX + (float)GWinSizeY) / KAGOME_GRID_SPACING);
+
+		for (int32 i = 0; i < 3; ++i)
+		{
+			KagomeGridLine& line = _kagomeLines[i];
+			line.active = true;
+			line.pos = Vector(startXs[i], (float)GWinSizeY);
+			line.step = slashDir * KAGOME_GRID_SPACING;
+			line.remainingBullets = slashCount;
+			line.startDelay = 0.f;
+			line.spawnTimer = 0.f;
+		}
+
+		// "\" 3줄은 1초 뒤에 startKagomeBackslashLines()가 세팅한다 (updateKagomeGrid에서 타이밍 관리).
+		_kagomeDiagonalBackslashPending = true;
+		_kagomeDiagonalBackslashTimer = 1.0f;
+	}
+}
+
+// Diagonal 웨이브에서 "/" 시작 1초 뒤, "\" 방향 3줄을 세팅한다.
+void Boss::startKagomeBackslashLines()
+{
+	const float startXs[3] = { 100.f, 300.f, 500.f };
+	Vector backslashDir(1.f, 1.f);
+	backslashDir.Normalize();
+	int32 backslashCount = (int32)(((float)GWinSizeX + (float)GWinSizeY) / KAGOME_GRID_SPACING);
+
+	for (int32 i = 0; i < 3; ++i)
+	{
+		KagomeGridLine& line = _kagomeLines[3 + i];
+		line.active = true;
+		line.pos = Vector(startXs[i], 0.f);
+		line.step = backslashDir * KAGOME_GRID_SPACING;
+		line.remainingBullets = backslashCount;
+		line.startDelay = 0.f;
+		line.spawnTimer = 0.f;
+	}
+}
+
+// 한 줄을 한 프레임만큼 진행시킨다: 시작 대기 -> 스폰 간격마다 탄 한 알씩 생성 -> 다음 칸으로 이동.
+void Boss::advanceKagomeLine(KagomeGridLine& line, float deltaTime)
+{
+	if (!line.active)
+		return;
+
+	if (line.startDelay > 0.f)
+	{
+		line.startDelay -= deltaTime;
+		return;
+	}
+
+	line.spawnTimer -= deltaTime;
+	if (line.spawnTimer > 0.f)
+		return;
+	line.spawnTimer += KAGOME_BULLET_SPAWN_INTERVAL;
+
+	// 화면 여유범위(-32~+32) 밖이면 생성을 건너뛴다: Bullet::Update()의 화면밖 삭제 체크가
+	// 스폰 다음 프레임에 바로 지워버리는 것을 막기 위함(대각선 줄의 꼬리 부분에서 발생).
+	if (line.pos.x >= -32.f && line.pos.x <= (float)GWinSizeX + 32.f &&
+		line.pos.y >= -32.f && line.pos.y <= (float)GWinSizeY + 32.f)
+	{
+		Game::GetInstance().GetScene()->CreateBullet(line.pos, BulletType::Enemy, Vector(0.f, 1.f), 0.f,
+			false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None,
+			L"KagomeGridBulletGreen", KAGOME_GRID_BULLET_RADIUS, false, -1.f, KAGOME_GRID_BULLET_LIFETIME);
+	}
+
+	line.pos += line.step;
+	line.remainingBullets--;
+	if (line.remainingBullets <= 0)
+		line.active = false;
+}
+
+void Boss::updateKagomeGrid(float deltaTime)
+{
+	if (_kagomeDiagonalBackslashPending)
+	{
+		_kagomeDiagonalBackslashTimer -= deltaTime;
+		if (_kagomeDiagonalBackslashTimer <= 0.f)
+		{
+			startKagomeBackslashLines();
+			_kagomeDiagonalBackslashPending = false;
+		}
+	}
+
+	for (KagomeGridLine& line : _kagomeLines)
+	{
+		advanceKagomeLine(line, deltaTime);
+	}
+}
+
+// 워밍업(3초, 최초 1회) -> [단발 -> 1초 대기 -> 부채꼴 3발 -> 2초 대기] 무한 반복.
+void Boss::updateKagomeBurst(float deltaTime)
+{
+	_kagomeBurstTimer += deltaTime;
+
+	switch (_kagomeBurstState)
+	{
+		case KagomeBurstState::Warmup:
+			if (_kagomeBurstTimer >= 3.0f)
+			{
+				shootKagomeSingleBullet();
+				_kagomeBurstState = KagomeBurstState::WaitAfterSingle;
+				_kagomeBurstTimer = 0.f;
+			}
+			break;
+		case KagomeBurstState::WaitAfterSingle:
+			if (_kagomeBurstTimer >= 1.0f)
+			{
+				shootKagomeFanBullets();
+				_kagomeBurstState = KagomeBurstState::WaitAfterFan;
+				_kagomeBurstTimer = 0.f;
+			}
+			break;
+		case KagomeBurstState::WaitAfterFan:
+			if (_kagomeBurstTimer >= 2.0f)
+			{
+				shootKagomeSingleBullet();
+				_kagomeBurstState = KagomeBurstState::WaitAfterSingle;
+				_kagomeBurstTimer = 0.f;
+			}
+			break;
+	}
+}
+
+void Boss::shootKagomeSingleBullet()
+{
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_attackPoseTimer = 0.3f;
+
+	// 아래 고정이 아니라, 매번 왼쪽/오른쪽 중 무작위로 20도씩 기울여서 쏜다.
+	float offsetDeg = (rand() % 2 == 0) ? KAGOME_SINGLE_BULLET_ANGLE : -KAGOME_SINGLE_BULLET_ANGLE;
+	Vector dir = Vector(0.f, 1.f).Rotate(DegreeToRadian(offsetDeg));
+	scene->CreateBullet(GetPos(), BulletType::Enemy, dir, KAGOME_BIG_BULLET_SPEED,
+		false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None, L"KagomeBigBulletYellow", KAGOME_BIG_BULLET_RADIUS);
+	trackKagomeBigBullet(GetPos(), dir, KAGOME_BIG_BULLET_SPEED);
+}
+
+void Boss::shootKagomeFanBullets()
+{
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_attackPoseTimer = 0.3f;
+
+	// 아래(0,1) 기준 좌우 60도씩 벌어진 부채꼴 3발(-60/0/+60).
+	const float offsets[3] = { -60.f, 0.f, 60.f };
+	for (float offsetDeg : offsets)
+	{
+		Vector dir = Vector(0.f, 1.f).Rotate(DegreeToRadian(offsetDeg));
+		scene->CreateBullet(GetPos(), BulletType::Enemy, dir, KAGOME_BIG_BULLET_SPEED,
+			false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None, L"KagomeBigBulletYellow", KAGOME_BIG_BULLET_RADIUS);
+		trackKagomeBigBullet(GetPos(), dir, KAGOME_BIG_BULLET_SPEED);
+	}
+}
+
+// 빈 슬롯 하나에 새 그림자를 등록한다. 슬롯이 다 차 있으면(사실상 발생하지 않음) 조용히 무시한다.
+void Boss::trackKagomeBigBullet(Vector origin, Vector dir, float speed)
+{
+	for (KagomeBigBulletShadow& shadow : _kagomeBigBulletShadows)
+	{
+		if (!shadow.active)
+		{
+			shadow.pos = origin;
+			shadow.dir = dir;
+			shadow.speed = speed;
+			shadow.active = true;
+			return;
+		}
+	}
+}
+
+// 큰 탄 그림자들을 직접 이동시키면서(실제 Bullet과 같은 등속 직선운동이라 계산으로 충분히 따라간다),
+// 그 주변 KAGOME_DISRUPT_RADIUS 안에 있는 격자탄(콜라이더 반지름으로 구분)을 큰 탄 반대쪽으로 밀어낸다.
+// 밀려난 격자탄은 삭제되지 않고 그대로 날아가다가, 기존 Bullet::Update()의 화면밖 체크에 걸려
+// 화면을 벗어나는 순간 자연스럽게 Destroy()되어 풀로 반환된다.
+void Boss::updateKagomeDisruption(float deltaTime)
+{
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	for (KagomeBigBulletShadow& shadow : _kagomeBigBulletShadows)
+	{
+		if (!shadow.active)
+			continue;
+
+		shadow.pos += shadow.dir * shadow.speed * deltaTime;
+
+		if (shadow.pos.x < -32.f || shadow.pos.x > (float)GWinSizeX + 32.f ||
+			shadow.pos.y < -32.f || shadow.pos.y > (float)GWinSizeY + 32.f)
+		{
+			shadow.active = false;
+			continue;
+		}
+
+		const vector<Actor*>& bullets = scene->GetRenderList(RenderLayer::Bullet);
+		for (Actor* actor : bullets)
+		{
+			if (actor->GetActorType() != ActorType::EnemyBullet)
+				continue;
+
+			Bullet* bullet = static_cast<Bullet*>(actor);
+			ColliderCircle* collider = bullet->GetCollider();
+			// 반지름으로 "격자탄인지"를 구분한다: 큰 탄(KAGOME_BIG_BULLET_RADIUS=35)은 걸러지고
+			// 격자탄(KAGOME_GRID_BULLET_RADIUS=13.5 -> ColliderCircle 내부에서 13으로 절삭)만 대상이 된다.
+			if (collider == nullptr || collider->GetRadius() != (int32)KAGOME_GRID_BULLET_RADIUS)
+				continue;
+
+			Vector away = bullet->GetPos() - shadow.pos;
+			float dist = away.Length();
+			if (dist > KAGOME_DISRUPT_RADIUS)
+				continue;
+
+			// 큰 탄과 정확히 겹친 경우(거리 0)엔 기준 방향이 없으므로 큰 탄의 진행 방향으로 밀어낸다.
+			away = (dist > SMALL_NUMBER) ? away : shadow.dir;
+			bullet->SetVelocity(away, KAGOME_SCATTER_SPEED);
+		}
+	}
 }

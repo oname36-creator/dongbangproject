@@ -11,8 +11,10 @@ public:
 	// 실제로 충돌체크가 필요한 셀인지
 	bool CheckCell() { return _checkCell; }
 	void SetCheckCell(bool flag) { _checkCell = flag; }
-	
+
 	bool CheckCollision(ColliderCircle* other);
+
+	int32 GetRadius() const { return _radius; }
 
 private:
 	Actor*		_owner = nullptr;

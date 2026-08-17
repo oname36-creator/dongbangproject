@@ -13,6 +13,7 @@ class Bullet;
 class LaserSegment;
 class Boss;
 class Laser;
+class BossIllusion;
 
 
 // 게임화면에 등장하는 모든 오브젝트를 관리
@@ -64,10 +65,12 @@ public:
 	// (Bullet과 달리 Laser 쪽에서 포인터를 계속 들고 있어야 해서 반환값을 넘겨준다)
 	class LaserSegment* CreateLaserSegment(Vector pos, int32 radius);
 	class Laser* CreateLaser(Vector pivot, float angleOffset, float length, int32 segmentCount, int32 segmentRadius);
+	class BossIllusion* CreateBossIllusion(Vector pos, wstring key, int32 hp, float shootOffset, wstring fanTextureKey);
 
 	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
 					   float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
-					   wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f);
+					   wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f,
+					   float lifeTime = -1.f);
 	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f, wstring customTextureKey = L"", float colliderSizeOverride = -1.f,
 					   bool faceDirection = false);
 	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
@@ -87,6 +90,7 @@ public:
 
 	void CreateEffect(Vector pos);
 	void ClearEnemyBullets();
+	void ClearBossIllusions();	// Boss 레이어에 남아있는 분신(BossIllusion)만 골라서 정리 (본체는 건드리지 않음)
 	void BombClearBullets();	// 폭탄 전용: 적 탄환을 점수 아이템으로 바꿔서 플레이어에게 자동 회수시킨다
 	void ShowBombFace();	// 폭탄 사용 시 화면 왼쪽 아래에 1.5초간 일러스트를 띄운다.
 	void ShowFace(wstring textureKey);	// 보스 진입 등, 임의의 일러스트를 같은 방식으로 왼쪽 아래에 띄운다.

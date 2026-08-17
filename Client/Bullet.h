@@ -7,7 +7,8 @@ class Bullet : public Actor // (Actor=GameObject)
 public:
 	void Init(BulletType type, Vector dir, float speed, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
 			  float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
-			  wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f);
+			  wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f,
+			  float lifeTime = -1.f);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 
@@ -25,6 +26,10 @@ public:
 	virtual class ColliderCircle* GetCollider() override { return _collider; }
 
 	BulletType GetBulletType() const { return _type; }
+
+	// 이미 스폰된 탄의 방향/속도를 외부에서 즉시 바꾼다(가속은 초기화). 카고메 격자탄처럼
+	// 원래 정지해 있다가 다른 오브젝트에 의해 강제로 튕겨나가는 경우에 쓴다.
+	void SetVelocity(Vector dir, float speed);
 
 private:
 	// faceDirection이 켜져있을 때, _dir 기준으로 16방향 중 가까운 회전 텍스처를 골라서 적용한다.
@@ -48,6 +53,8 @@ private:
 	float _preStopTime = 0.f;
 	float _launchDelay = 0.f;
 	BulletRedirectMode _redirectMode = BulletRedirectMode::None;
+
+	float _lifeTime = -1.f;	// -1이면 기존처럼 화면 밖으로 나가야만 삭제. 0 이상이면 그 시간(초)이 지나면 위치와 무관하게 자동 삭제.
 
 	bool _faceDirection = false;
 	wstring _baseTextureKey;	// faceDirection용 회전 접미사가 붙기 전의 원본 텍스처 키

@@ -19,6 +19,8 @@ enum class BossPatternType
 	ConvergingBurst,	// 한 방향으로 3발이 각기 다른 속도로 동시에 나갔다가, 목표 속도로 수렴해서 나란히 정렬된다.
 	BorderAimedBurst,	// 마법진 6개가 화면 테두리를 따라 돌면서 쉬지 않고 조준탄을 쏜다(실험용).
 	Leavatein,
+	IllusionBurst,	// 5페이즈 전용: Circle/Fan 중 하나를 매 사이클마다 무작위로 골라 쏜다.
+	Kagome,	// 6페이즈 전용: "카고메 카고메". 격자탄 웨이브 + 큰 탄 리듬이 서로 독립된 타이머로 동시에 진행된다.
 };
 struct TimelineStep
 {
@@ -51,6 +53,43 @@ struct BossPhase
 	int32 hpThreshold;
 };
 
+// 카고메 카고메(6페이즈)의 격자탄 웨이브 종류. 3초마다 번갈아 나온다.
+enum class KagomeGridWaveType
+{
+	HorizontalVertical,	// 가로 4줄 + 세로 4줄, 줄마다 0.1초씩 순차 시작
+	Diagonal,				// "/" 3줄 동시 시작 -> 1초 뒤 "\" 3줄 시작
+};
+
+// 카고메 격자탄 한 줄. 한 알씩 순차적으로 스폰되며 뻗어나가는 상태를 들고 있다.
+struct KagomeGridLine
+{
+	bool active = false;
+	Vector pos;			// 다음 탄이 스폰될 위치
+	Vector step;			// 탄 한 알마다 더해지는 이동 벡터(방향 * 간격)
+	int32 remainingBullets = 0;
+	float startDelay = 0.f;	// 이 값이 0이 되기 전까지는 대기(줄 사이 순차 시작용)
+	float spawnTimer = 0.f;	// 다음 탄까지 남은 시간
+};
+
+// 카고메의 큰 탄 발사 리듬: 워밍업(3초, 최초 1회) -> [단발 -> 1초 대기 -> 부채꼴 3발 -> 2초 대기] 반복.
+enum class KagomeBurstState
+{
+	Warmup,
+	WaitAfterSingle,
+	WaitAfterFan,
+};
+
+// 실제로 발사된 큰 탄(Bullet 액터)과 별개로, "지금 큰 탄이 어디 있는지"만 추적하기 위한 가벼운 그림자 데이터.
+// Bullet 포인터를 직접 들고 있지 않는 이유: Bullet은 풀에서 나오고(오프스크린/수명/폭탄으로 아무 때나
+// 죽고 다른 발사에 재사용될 수 있어서), 여러 프레임에 걸쳐 포인터를 들고 있으면 댕글링 위험이 있다.
+struct KagomeBigBulletShadow
+{
+	bool active = false;
+	Vector pos;
+	Vector dir;
+	float speed = 0.f;
+};
+
 enum class BossAnimState
 {
 	Idle,
@@ -81,7 +120,8 @@ public:
 			wstring circleDelayedAimedTextureKey = L"", wstring circleDelayedRandomTextureKey = L"",
 			int32 fixedPosPhaseIndex = -1, float circleRotationSpeed = 0.f,
 			float convergingSpeed = 300.f, float convergingSpeedSpread = 150.f, float convergingInterval = 0.6f,
-			float convergingAngleSpread = 10.f);
+			float convergingAngleSpread = 10.f,
+			int32 illusionPhaseIndex = -1);
 	virtual void Destroy() override;
 
 	virtual void Update(float deltaTime) override;
@@ -121,6 +161,23 @@ private:
 	void beginLeavateinAction(LeavateinAction action);
 	Vector getLeavateinLaunchPos(LeavateinAction action) const;
 	void shootLeavateinBullets();
+
+	// 5페이즈: 본체와 겉모습이 같은 분신 3체를 스폰. 분신은 자체 HP/타이머로 독립 동작하고,
+	// 페이즈 타임라인(Circle+Fan)은 본체 쪽에서 그대로 재생된다.
+	void spawnIllusionClones();
+
+	// 6페이즈(카고메 카고메): 격자탄 웨이브 상태머신과 큰 탄 리듬 상태머신을 완전히 독립적으로 굴린다.
+	void startKagomeSpellcard();
+	void stopKagomeSpellcard();
+	void startKagomeGridWave();			// 3초마다 호출: 웨이브 종류를 토글하고 그 웨이브의 줄들을 세팅한다.
+	void startKagomeBackslashLines();		// Diagonal 웨이브에서 "/" 시작 1초 뒤 "\" 줄들을 세팅한다.
+	void advanceKagomeLine(KagomeGridLine& line, float deltaTime);
+	void updateKagomeGrid(float deltaTime);
+	void updateKagomeBurst(float deltaTime);
+	void updateKagomeDisruption(float deltaTime);	// 큰 탄 그림자 주변의 격자탄을 흐트러뜨린다.
+	void shootKagomeSingleBullet();
+	void shootKagomeFanBullets();
+	void trackKagomeBigBullet(Vector origin, Vector dir, float speed);
 
 private:
 	int32 _hp = 0;
@@ -266,4 +323,35 @@ private:
 	LeavateinAction _leavateinPendingAction = LeavateinAction::SweepLeftStart;	// Reposition이 끝나면 시작할 액션
 	Vector _leavateinMoveFrom;	// Reposition/Slide 이동 시작 위치
 	Vector _leavateinMoveTo;	// Reposition/Slide 이동 목표 위치
+
+	// 특정 페이즈에서만 분신 3체를 스폰하기 위한 값. -1이면 스폰 안 함.
+	int32 _illusionPhaseIndex = -1;
+	// spawnIllusionClones()가 화면 상단 4자리 중 본체 몫으로 배정한 자리(배회 중심점).
+	Vector _illusionBossSlot;
+	// 본체가 _illusionBossSlot 주변에서 배회할 현재 목표점. Update()가 매 프레임 이 값으로
+	// _moveTargetPos를 덮어써서, 기존 3초 랜덤 이동 타이머가 대형을 깨지 않게 한다.
+	Vector _illusionWanderTargetPos;
+	int32 _illusionWanderTimerId = -1;
+	float _illusionWanderRadius = 60.f;	// 분신(BossIllusion)보다 조금 더 넓게
+
+	// 5페이즈(_illusionPhaseIndex) 전용 텍스처. 다른 페이즈의 Circle/Fan에는 영향 없음
+	// (_burstTextureKeyAlt/_burstTextureAltPhaseIndex와 같은 패턴).
+	wstring _circleTextureKeyAlt = L"IllusionCircle";
+	wstring _fanTextureKeyAlt = L"IllusionFanRed";	// 본체 몫 색상. 분신 3체는 각자 다른 색(BossIllusion 쪽에서 지정)
+
+	// 6페이즈: 카고메 카고메.
+	bool _kagomeActive = false;
+
+	// 격자탄 웨이브. 슬롯 0~3=가로 4줄, 4~7=세로 4줄 (HorizontalVertical 웨이브),
+	// 또는 0~2="/" 3줄, 3~5="\" 3줄 (Diagonal 웨이브, 6~7은 미사용).
+	KagomeGridWaveType _kagomeGridWaveType = KagomeGridWaveType::HorizontalVertical;
+	int32 _kagomeGridWaveTimerId = -1;
+	KagomeGridLine _kagomeLines[8];
+	bool _kagomeDiagonalBackslashPending = false;	// Diagonal 웨이브에서 "\" 시작을 기다리는 중인지
+	float _kagomeDiagonalBackslashTimer = 0.f;
+
+	// 큰 탄 리듬(단발/부채꼴)과, 화면에 날아가는 큰 탄들의 위치를 추적하는 그림자.
+	KagomeBurstState _kagomeBurstState = KagomeBurstState::Warmup;
+	float _kagomeBurstTimer = 0.f;
+	KagomeBigBulletShadow _kagomeBigBulletShadows[8];
 };

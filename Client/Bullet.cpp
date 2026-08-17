@@ -14,7 +14,8 @@ static mt19937 gen(rd());
 
 void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed,  float accel,
 				   float preStopTime, float launchDelay, BulletRedirectMode redirectMode,
-				   wstring customTextureKey, float colliderSizeOverride, bool faceDirection, float targetSpeed)
+				   wstring customTextureKey, float colliderSizeOverride, bool faceDirection, float targetSpeed,
+				   float lifeTime)
 {
 	_type = type;
 	_isHoming = isHoming;
@@ -23,6 +24,7 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	_launchDelay = launchDelay;
 	_redirectMode = redirectMode;
 	_targetSpeed = targetSpeed;
+	_lifeTime = lifeTime;
 
 	wstring textureKey;
 
@@ -180,6 +182,24 @@ void Bullet::Update(float deltaTime)
 		// 화면 밖으로 나가면 삭제 예약
 		Destroy();
 	}
+
+	// 정지해 있거나 화면을 벗어나지 않는 탄(예: 카고메 격자탄)이 무한히 쌓이는 것을 막기 위한 수명 삭제.
+	if (_lifeTime >= 0.f)
+	{
+		_lifeTime -= deltaTime;
+		if (_lifeTime <= 0.f)
+		{
+			Destroy();
+		}
+	}
+}
+
+void Bullet::SetVelocity(Vector dir, float speed)
+{
+	dir.Normalize();
+	_dir = dir;
+	_moveSpeed = speed;
+	_accel = 0.f;
 }
 
 void Bullet::Render(HDC hdc)

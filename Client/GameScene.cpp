@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "Enemy.h"
 #include "Boss.h"
+#include "BossIllusion.h"
 #include "Background.h"
 #include "ResourceManager.h"
 #include "Texture.h"
@@ -168,7 +169,14 @@ static const vector<BossPhase> g_extraBossPhases =
 	// 3페이즈(실험용): 마법진 6개가 화면 테두리를 돌면서 조준탄을 계속 쏜다.
 	{ { { 0.f, BossPatternType::BorderAimedBurst } }, 1.0f, 3500 },
 	// 4페이즈
-	{{{0.f, BossPatternType::Leavatein}}, 1.0f , 0}
+	{ { { 0.f, BossPatternType::Leavatein } }, 1.0f, 3000 },
+	// 5페이즈: 분신 3체 소환("Four of a Kind"류). 본체는 1초마다 Circle/Fan 중 하나를 무작위로 쏘고,
+	// 분신 3체(Boss::spawnIllusionClones)도 각자 독립된 타이머로 같은 방식(무작위 택1)을 0.2초씩 시간차를 두고 쏜다.
+	// 진짜/가짜 구분은 순전히 맞혀봐야 알 수 있음 — 분신을 맞혀도 이 HP는 전혀 줄지 않는다.
+	{ { { 0.f, BossPatternType::IllusionBurst } }, 1.0f, 2500 },
+	// 6페이즈: "카고메 카고메". 격자탄 웨이브(가로+세로 / 대각선 번갈아 생성)와 큰 탄 리듬(단발/부채꼴)이
+	// 서로 독립된 타이머로 동시에 진행되고, 큰 탄이 지나가는 자리의 격자탄은 흐트러진다(Boss::updateKagomeDisruption).
+	{ { { 0.f, BossPatternType::Kagome } }, 1.0f, 0 }
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
@@ -701,7 +709,9 @@ if(_isPaused)
 						   false, -1.f,
 						   L"", L"",
 						   0, 15.f,
-						   150.f, 150.f, 1.2f);	// convergingSpeed=150, convergingSpeedSpread=150(그대로), convergingInterval 0.6 -> 1.2(쿨타임 2배)
+						   150.f, 150.f, 1.2f,	// convergingSpeed=150, convergingSpeedSpread=150(그대로), convergingInterval 0.6 -> 1.2(쿨타임 2배)
+						   10.f,
+						   4);	// illusionPhaseIndex=4: 5페이즈(g_extraBossPhases[4])에서 분신 3체 소환
 				_reservedAdd.push_back(boss);
 				_boss = boss;
 				_bossSpawned = true;
@@ -1038,10 +1048,19 @@ Laser* GameScene::CreateLaser(Vector pivot, float angleOffset, float length, int
 	return laser;
 }
 
+BossIllusion* GameScene::CreateBossIllusion(Vector pos, wstring key, int32 hp, float shootOffset, wstring fanTextureKey)
+{
+	BossIllusion* illusion = new BossIllusion();
+	illusion->Init(pos, key, hp, shootOffset, fanTextureKey);
+	_reservedAdd.push_back(illusion);
+
+	return illusion;
+}
+
 
 void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed, float accel,
 							  float preStopTime, float launchDelay, BulletRedirectMode redirectMode, wstring customTextureKey,
-							  float colliderSizeOverride, bool faceDirection, float targetSpeed)
+							  float colliderSizeOverride, bool faceDirection, float targetSpeed, float lifeTime)
 {
 	// 어떤 경로로 호출되든(타이머 콜백 포함) 일시정지 중에는 새 총알을 만들지 않는다.
 	if (_isPaused)
@@ -1053,7 +1072,7 @@ void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float spee
 	if(bullet == nullptr)
 		return;
 
-	bullet->Init(type, dir, speed, isHoming, turnSpeed, accel, preStopTime, launchDelay, redirectMode, customTextureKey, colliderSizeOverride, faceDirection, targetSpeed);
+	bullet->Init(type, dir, speed, isHoming, turnSpeed, accel, preStopTime, launchDelay, redirectMode, customTextureKey, colliderSizeOverride, faceDirection, targetSpeed, lifeTime);
 	bullet->SetPos(pos);
 
 	_reservedAdd.push_back(bullet);
@@ -1233,6 +1252,20 @@ void GameScene::ClearEnemyBullets()
 		if (actor->GetActorType() == ActorType::EnemyBullet)
 		{
 			actor->Destroy();
+		}
+	}
+}
+
+void GameScene::ClearBossIllusions()
+{
+	// 본체(Boss)도 같은 RenderLayer::Boss/ActorType::Boss라서 dynamic_cast로 분신만 골라낸다.
+	const vector<Actor*>& bossLayer = GetRenderList(RenderLayer::Boss);
+	for (Actor* actor : bossLayer)
+	{
+		BossIllusion* illusion = dynamic_cast<BossIllusion*>(actor);
+		if (illusion != nullptr)
+		{
+			illusion->Destroy();
 		}
 	}
 }
