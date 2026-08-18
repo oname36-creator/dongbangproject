@@ -140,6 +140,7 @@ void AudioManager::Play(wstring key)
 	}
 	callback->voice = voice;
 	_activeVoices.push_back(callback);
+	voice->SetVolume(_sfxVolume);
 
 	XAUDIO2_BUFFER buffer = {};
 	buffer.AudioBytes = (UINT32)clip.data.size();
@@ -164,6 +165,8 @@ void AudioManager::PlayBGM(wstring key)
 	if (_bgmVoice == nullptr)
 		return;
 
+	_bgmVoice->SetVolume(_bgmVolume);
+
 	XAUDIO2_BUFFER buffer = {};
 	buffer.AudioBytes = (UINT32)clip.data.size();
 	buffer.pAudioData = clip.data.data();
@@ -181,4 +184,18 @@ void AudioManager::StopBGM()
 		_bgmVoice->DestroyVoice();
 		_bgmVoice = nullptr;
 	}
+}
+
+void AudioManager::SetBGMVolume(float volume)
+{
+	_bgmVolume = std::clamp(volume, 0.f, 1.f);
+	if (_bgmVoice)
+	{
+		_bgmVoice->SetVolume(_bgmVolume);
+	}
+}
+
+void AudioManager::SetSFXVolume(float volume)
+{
+	_sfxVolume = std::clamp(volume, 0.f, 1.f);
 }

@@ -10,6 +10,11 @@
 
 namespace
 {
+	constexpr float VOLUME_STEP = 0.1f;
+}
+
+namespace
+{
 	const wchar_t* GetMenuLabel(TitleMenuItem item)
 	{
 		switch (item)
@@ -80,6 +85,51 @@ void TitleScene::Update(float deltaTime)
 		return;
 	}
 
+	if (_inSettings)
+	{
+		if (InputManager::GetInstance().GetButtonDown(KeyType::Up))
+		{
+			_settingsIndex = (_settingsIndex - 1 + 3) % 3;
+		}
+		if (InputManager::GetInstance().GetButtonDown(KeyType::Down))
+		{
+			_settingsIndex = (_settingsIndex + 1) % 3;
+		}
+
+		if (_settingsIndex == 0 || _settingsIndex == 1)
+		{
+			float delta = 0.f;
+			if (InputManager::GetInstance().GetButtonDown(KeyType::Left))
+				delta = -VOLUME_STEP;
+			else if (InputManager::GetInstance().GetButtonDown(KeyType::Right))
+				delta = VOLUME_STEP;
+
+			if (delta != 0.f)
+			{
+				if (_settingsIndex == 0)
+				{
+					float newVolume = AudioManager::GetInstance().GetBGMVolume() + delta;
+					AudioManager::GetInstance().SetBGMVolume(newVolume);
+					SaveManager::GetInstance().SetBGMVolume(AudioManager::GetInstance().GetBGMVolume());
+				}
+				else
+				{
+					float newVolume = AudioManager::GetInstance().GetSFXVolume() + delta;
+					AudioManager::GetInstance().SetSFXVolume(newVolume);
+					SaveManager::GetInstance().SetSFXVolume(AudioManager::GetInstance().GetSFXVolume());
+					AudioManager::GetInstance().Play(L"TitleSelect");	// 조절한 효과음 볼륨을 바로 들어볼 수 있게
+				}
+			}
+		}
+
+		if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK) && _settingsIndex == 2)
+		{
+			AudioManager::GetInstance().Play(L"TitleSelect");
+			_inSettings = false;
+		}
+		return;
+	}
+
 	if (InputManager::GetInstance().GetButtonDown(KeyType::Up))
 	{
 		_selectedIndex = (_selectedIndex - 1 + (int32)_menuItems.size()) % (int32)_menuItems.size();
@@ -102,7 +152,8 @@ void TitleScene::Update(float deltaTime)
 			// TODO: 엑스트라 스테이지 콘텐츠가 아직 없어 자리표시만 유지 (선택해도 동작 없음)
 			break;
 		case TitleMenuItem::Settings:
-			// 사운드 시스템이 아직 없어 자리표시만 유지 (선택해도 동작 없음)
+			_inSettings = true;
+			_settingsIndex = 0;
 			break;
 		case TitleMenuItem::Exit:
 			PostQuitMessage(0);
@@ -153,6 +204,43 @@ void TitleScene::Render(HDC hdc)
 	{
 		const wchar_t* guide = L"Press Z to Start";
 		::TextOut(hdc, GWindowSizeX / 2 - 60, GWinSizeY - 100, guide, static_cast<int32>(wcslen(guide)));
+	}
+	else if (_inSettings)
+	{
+		constexpr int32 menuStartY = 300;
+		constexpr int32 menuLineHeight = 40;
+
+		HFONT prevMenuFont = _menuFont ? (HFONT)SelectObject(hdc, _menuFont) : nullptr;
+		COLORREF prevMenuColor = SetTextColor(hdc, RGB(255, 255, 255));
+		int32 prevMenuBkMode = SetBkMode(hdc, TRANSPARENT);
+
+		// 0~1 볼륨을 [==========] 10칸짜리 막대로 표시.
+		auto volumeBar = [](float volume) -> wstring
+		{
+			int32 filled = (int32)(volume * 10.f + 0.5f);
+			return L"[" + wstring(filled, L'=') + wstring(10 - filled, L'-') + L"]";
+		};
+
+		wstring bgmLine = (_settingsIndex == 0 ? L"> " : L"  ") + wstring(L"BGM 음량 ") + volumeBar(AudioManager::GetInstance().GetBGMVolume());
+		wstring sfxLine = (_settingsIndex == 1 ? L"> " : L"  ") + wstring(L"효과음 음량 ") + volumeBar(AudioManager::GetInstance().GetSFXVolume());
+		wstring backLine = (_settingsIndex == 2 ? L"> " : L"  ") + wstring(L"뒤로가기");
+
+		RECT bgmRect{ 0, menuStartY, GWindowSizeX, menuStartY + menuLineHeight };
+		RECT sfxRect{ 0, menuStartY + menuLineHeight, GWindowSizeX, menuStartY + menuLineHeight * 2 };
+		RECT backRect{ 0, menuStartY + menuLineHeight * 2, GWindowSizeX, menuStartY + menuLineHeight * 3 };
+		DrawText(hdc, bgmLine.c_str(), -1, &bgmRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+		DrawText(hdc, sfxLine.c_str(), -1, &sfxRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+		DrawText(hdc, backLine.c_str(), -1, &backRect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+
+		SetTextColor(hdc, prevMenuColor);
+		SetBkMode(hdc, prevMenuBkMode);
+		if (prevMenuFont)
+		{
+			SelectObject(hdc, prevMenuFont);
+		}
+
+		const wchar_t* guide = L"위/아래: 항목 선택   좌/우: 음량 조절   Z: 뒤로가기 선택";
+		::TextOut(hdc, GWindowSizeX / 2 - 220, GWinSizeY - 60, guide, static_cast<int32>(wcslen(guide)));
 	}
 	else
 	{

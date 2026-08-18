@@ -15,7 +15,7 @@ static mt19937 gen(rd());
 void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed,  float accel,
 				   float preStopTime, float launchDelay, BulletRedirectMode redirectMode,
 				   wstring customTextureKey, float colliderSizeOverride, bool faceDirection, float targetSpeed,
-				   float lifeTime)
+				   float lifeTime, float fallAccel, bool reflectOffWalls)
 {
 	_type = type;
 	_isHoming = isHoming;
@@ -25,6 +25,8 @@ void Bullet::Init(BulletType type, Vector dir, float speed, bool isHoming, float
 	_redirectMode = redirectMode;
 	_targetSpeed = targetSpeed;
 	_lifeTime = lifeTime;
+	_fallAccel = fallAccel;
+	_reflectOffWalls = reflectOffWalls;
 
 	wstring textureKey;
 
@@ -118,6 +120,13 @@ void Bullet::Update(float deltaTime)
 			float radian = DegreeToRadian(uniform_real_distribution<float>(0.f, 360.f)(gen));
 			_dir = Vector(cosf(radian), sinf(radian));
 		}
+		else if (_redirectMode == BulletRedirectMode::Down)
+		{
+			// 상승 구간(_preStopTime)이 끝나는 순간 아래로 방향을 바꾸고, 속도 0부터 _fallAccel로 다시 가속시킨다.
+			_dir = Vector(0.f, 1.f);
+			_moveSpeed = 0.f;
+			_accel = _fallAccel;
+		}
 
 		if (_faceDirection)
 		{
@@ -175,6 +184,26 @@ void Bullet::Update(float deltaTime)
 	Vector pos = GetPos();
 	pos = pos + _dir * _moveSpeed * deltaTime;
 	SetPos(pos);
+
+	if (_reflectOffWalls)
+	{
+		Vector reflectPos = GetPos();
+		if ((reflectPos.x <= 0.f && _dir.x < 0.f) || (reflectPos.x >= (float)GWinSizeX && _dir.x > 0.f))
+		{
+			_dir.x = -_dir.x;
+			reflectPos.x = std::clamp(reflectPos.x, 0.f, (float)GWinSizeX);
+			SetPos(reflectPos);
+			_reflectOffWalls = false;	// 딱 1번만 반사
+		}
+		else if (reflectPos.y <= 0.f && _dir.y < 0.f)
+		{
+			_dir.y = -_dir.y;
+			reflectPos.y = 0.f;
+			SetPos(reflectPos);
+			_reflectOffWalls = false;
+		}
+		// 아래쪽(y >= GWinSizeY)은 반사하지 않고 아래 화면밖 삭제 로직을 그대로 탄다.
+	}
 
 	// 여유값(32px)만큼 화면 밖으로 나간 뒤에 삭제 : 경계에서 탄이 깜빡 사라지는 것 방지
 	if (GetPos().y < -32 || GetPos().y > (GWinSizeY + 32) || GetPos().x < -32 || GetPos().x > (GWinSizeX + 32))

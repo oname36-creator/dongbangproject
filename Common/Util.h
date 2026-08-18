@@ -15,6 +15,7 @@ enum class BulletRedirectMode
 	None,	// 스폰 시 정해둔 방향 그대로 (지연만 걸림)
 	Aimed,	// 발동 시점에 플레이어(적 탄) / 가장 가까운 적(플레이어 탄) 조준
 	Random,	// 발동 시점에 무작위 방향으로 재설정
+	Down,	// 발동 시점에 아래(0,1) 방향으로 전환하고 속도를 0에서부터 fallAccel로 재가속(스타보우 브레이크의 상승->낙하 전환용)
 };
 
 enum class RenderLayer

@@ -23,6 +23,13 @@ public:
 	void PlayBGM(wstring key);
 	void StopBGM();
 
+	// 0~1 범위로 clamp해서 저장. BGM은 재생 중인 보이스에도 즉시 반영되고,
+	// 효과음은 다음에 Play()로 새로 재생되는 보이스부터 반영된다(짧게 끝나는 소리라 굳이 소급 적용 안 함).
+	void SetBGMVolume(float volume);
+	void SetSFXVolume(float volume);
+	float GetBGMVolume() const { return _bgmVolume; }
+	float GetSFXVolume() const { return _sfxVolume; }
+
 private:
 	AudioManager() = default;
 	~AudioManager() = default;
@@ -64,4 +71,7 @@ private:
 
 	// 무한 루프로 재생 중인 배경음악 보이스(콜백 없이 직접 관리, StopBGM/새 곡 재생 시 정지).
 	IXAudio2SourceVoice* _bgmVoice = nullptr;
+
+	float _bgmVolume = 1.0f;
+	float _sfxVolume = 1.0f;
 };

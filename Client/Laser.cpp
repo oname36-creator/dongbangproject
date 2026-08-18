@@ -82,7 +82,8 @@ void Laser::Render(HDC hdc)
 
 		float radian = DegreeToRadian(_currentAngle + 90.f);
 
-		_bladeTexture->RenderRotated(hdc, screenCenter, radian, Vector(_length, _segmentRadius * 2.f));
+		float thickness = (_bladeThickness > 0.f) ? _bladeThickness : (_segmentRadius * 2.f);
+		_bladeTexture->RenderRotated(hdc, screenCenter, radian, Vector(_length, thickness));
 	// TODO: _pivot에서 _currentAngle 방향으로 _length만큼 뻗은 칼날 도형 그리기
 	//       (GDI Polygon 등으로 직접 그리기 - SetWorldTransform 회전 API는 프로젝트에 없음)
 

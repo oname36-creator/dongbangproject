@@ -46,6 +46,10 @@ private:
 	int32 _lives = 3;
 	float subSpacing = 0.f;
 	float _satelliteSpacing = 30.f;
+
+	// 좌우 입력이 없을 때(idle) 재생되는 4프레임 반복 애니메이션.
+	float _idleAnimTimer = 0.f;
+	int32 _idleAnimFrame = 0;
 };
 
 

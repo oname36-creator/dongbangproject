@@ -70,7 +70,7 @@ public:
 	void CreateBullet(Vector pos, BulletType type, Vector dir, float speed = 500.f, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
 					   float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
 					   wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f,
-					   float lifeTime = -1.f);
+					   float lifeTime = -1.f, float fallAccel = 0.f, bool reflectOffWalls = false);
 	void FireStraight(Vector pos, BulletType type, Vector dir, float speed = 500.f, wstring customTextureKey = L"", float colliderSizeOverride = -1.f,
 					   bool faceDirection = false);
 	void FireAimed(Vector pos, BulletType type, Vector targetPos, float speed = 500.f);
@@ -213,6 +213,7 @@ private:
 	class Player* _player = nullptr;
 	class Boss* _boss = nullptr;
 	bool _bossSpawned = false;
+	bool _clearedExtra = false;	// Clear 상태 진입 시점에 ExtraBoss를 잡아서 온 건지(true) Stage3Boss인지(false)
 
 	// 컨티뉴 시스템: 최대 3번까지, 몇 번째를 선택 중인지(Yes/No)
 	int32 _continueCount = 0;

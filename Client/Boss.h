@@ -22,6 +22,9 @@ enum class BossPatternType
 	IllusionBurst,	// 5페이즈 전용: Circle/Fan 중 하나를 매 사이클마다 무작위로 골라 쏜다.
 	Kagome,	// 6페이즈 전용: "카고메 카고메". 격자탄 웨이브 + 큰 탄 리듬이 서로 독립된 타이머로 동시에 진행된다.
 	LoveMaze,	// 7페이즈 전용: "사랑의 미로". Spiral+Circle이 동시에 계속 돌면서, 둘 다 같은 20도 빈 구간을 비우고 쏜다.
+	StarbowBreak,	// 8페이즈 전용: "스타보우 브레이크". 대각선/십자 줄을 따라 색깔별 탄이 순차 생성되어 잠깐 떠올랐다가 가속 낙하한다.
+	PastClock,	// 9페이즈 전용: "과거를 새기는 시계". 위/아래 부채꼴을 같은 타이머로 동시에 쏘고, 프로펠러 레이저 2개가 화면 양쪽에서 오간다.
+	QED,	// 10페이즈 전용: "Q.E.D. 495년의 파문". 원형탄이 벽에서 1번 반사되고, HP가 깎일수록 계단식으로 빨라진다.
 };
 struct TimelineStep
 {
@@ -89,6 +92,49 @@ struct KagomeBigBulletShadow
 	Vector pos;
 	Vector dir;
 	float speed = 0.f;
+};
+
+// 스타보우 브레이크(8페이즈)의 대각선/십자 줄 종류. 웨이브마다 셋 중 하나가 무작위로 골라진다.
+enum class StarbowFormationType
+{
+	DiagonalSlash,		// y=x 방향(오프셋 30씩 다른 6줄)
+	DiagonalBackslash,	// y=-x 방향(오프셋 30씩 다른 6줄)
+	Cross,				// 가로 3줄 + 세로 3줄
+};
+
+// 스타보우 브레이크 한 줄. 카고메 격자탄 줄(KagomeGridLine)과 같은 방식으로, 한 알씩 순차 스폰된다.
+struct StarbowLine
+{
+	bool active = false;
+	Vector pos;			// 다음 탄이 스폰될 위치
+	Vector step;			// 탄 한 알마다 더해지는 이동 벡터(방향 * 간격)
+	int32 remainingBullets = 0;
+	float spawnTimer = 0.f;	// 다음 탄까지 남은 시간
+	wstring colorKey;			// 이 줄에 스폰되는 탄의 텍스처 키(줄 전체가 한 색)
+};
+
+// 스타보우 브레이크 웨이브 진행 상태: 줄들을 순차 스폰 중인지, 다음 웨이브까지 쉬는 중인지.
+enum class StarbowState
+{
+	Spawning,
+	Waiting,
+};
+
+// 9페이즈(과거를 새기는 시계)의 프로펠러 레이저가 지금 이동 중인지, 끝에 도달해서 쉬는 중인지.
+enum class PastClockPropellerState
+{
+	Moving,
+	Resting,
+};
+
+// 프로펠러 레이저 하나: 같은 pivot을 공유하는 날개(Laser) 4장이 함께 돌면서 x축을 오간다.
+struct PastClockPropeller
+{
+	Vector pivot;
+	float dir = 1.f;		// x축 이동 방향(+1=오른쪽, -1=왼쪽)
+	PastClockPropellerState state = PastClockPropellerState::Moving;
+	float restTimer = 0.f;
+	class Laser* blades[4] = { nullptr, nullptr, nullptr, nullptr };
 };
 
 enum class BossAnimState
@@ -187,6 +233,28 @@ private:
 	bool isAngleInLoveMazeGap(float angleDeg) const;
 	void shootLoveMazeSpiral();				// 0.1초마다 팔을 쏜다. 그 시점의 빈 구간을 그대로 따라간다(갭을 옮기지는 않음).
 	void shiftLoveMazeGapAndFireCircle();		// 빈 구간을 양옆 중 무작위로 한 칸 이동시키는 것과 Circle 발사를 같은 순간에 묶어서 처리한다.
+
+	// 8페이즈(스타보우 브레이크): 대각선/십자 줄을 따라 색깔별 탄이 카고메 격자탄과 같은 방식으로
+	// 한 알씩 순차 스폰되고, 각 탄은 Bullet 자체의 상승(preStopTime)->낙하(BulletRedirectMode::Down) 전환으로 움직인다.
+	void startStarbowBreak();
+	void stopStarbowBreak();
+	void startStarbowWave();				// 3가지 대형(슬래시/백슬래시/십자) 중 하나를 무작위로 골라 줄들을 세팅한다.
+	void advanceStarbowLine(StarbowLine& line, float deltaTime);
+	void updateStarbowBreak(float deltaTime);
+
+	// 9페이즈(과거를 새기는 시계): 위/아래 부채꼴은 같은 타이머로 동시에 쏘되 탄수/속도만 다르고,
+	// 프로펠러 레이저 2개는 서로 반대 방향으로 회전+이동하다가 반대쪽 끝에서 회전까지 멈추고 쉰다.
+	void startPastClockSpellcard();
+	void stopPastClockSpellcard();
+	void shootPastClockFans();
+	void updatePastClockPropellers(float deltaTime);
+
+	// 10페이즈(Q.E.D. 495년의 파문): 원형탄을 최초 1회는 보스 위치에서, 이후로는 화면 상단의
+	// 무작위 위치에서 계속 터뜨린다. HP가 100 깎일 때마다 속도/발사주기가 계단식으로 빨라진다.
+	void startQEDSpellcard();
+	void stopQEDSpellcard();
+	void updateQED(float deltaTime);
+	void shootQEDCircle(Vector origin);
 
 private:
 	int32 _hp = 0;
@@ -371,4 +439,20 @@ private:
 	int32 _loveMazeCircleTimerId = -1;
 	float _loveMazeSpiralAngle = 0.f;	// 이 스펠카드 전용 spiral 회전각
 	float _loveMazeCircleAngle = 0.f;	// 이 스펠카드 전용 circle 회전각(겹겹이 쌓이는 효과용)
+
+	// 8페이즈: 스타보우 브레이크.
+	bool _starbowActive = false;
+	StarbowState _starbowState = StarbowState::Waiting;
+	float _starbowStateTimer = 0.f;		// Waiting 중엔 다음 웨이브까지 남은 시간
+	StarbowLine _starbowLines[6];			// 대각선 웨이브는 6줄, 십자 웨이브는 가로3+세로3=6줄을 모두 채워서 쓴다.
+
+	// 9페이즈: 과거를 새기는 시계.
+	bool _pastClockActive = false;
+	int32 _pastClockFanTimerId = -1;
+	PastClockPropeller _pastClockPropellers[2];
+
+	// 10페이즈: Q.E.D. 495년의 파문.
+	bool _qedActive = false;
+	bool _qedFirstBurstFired = false;
+	float _qedFireTimer = 0.f;
 };

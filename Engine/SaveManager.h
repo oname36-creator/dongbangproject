@@ -13,6 +13,11 @@ public:
 	bool IsExtraUnlocked() const { return _extraUnlocked; }
 	void UnlockExtra();
 
+	float GetBGMVolume() const { return _bgmVolume; }
+	float GetSFXVolume() const { return _sfxVolume; }
+	void SetBGMVolume(float volume);
+	void SetSFXVolume(float volume);
+
 private:
 	SaveManager() = default;
 	~SaveManager() = default;
@@ -23,4 +28,6 @@ private:
 private:
 	fs::path _saveFilePath;
 	bool _extraUnlocked = false;
+	float _bgmVolume = 1.0f;
+	float _sfxVolume = 1.0f;
 };

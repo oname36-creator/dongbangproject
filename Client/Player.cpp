@@ -15,6 +15,9 @@
 static random_device rd;
 static mt19937 gen(rd());
 
+constexpr int32 PLAYER_IDLE_FRAME_COUNT = 4;
+constexpr float PLAYER_IDLE_FRAME_DURATION = 0.15f;	// 프레임당 재생 시간(4프레임 반복이면 한 바퀴에 0.6초)
+
 void Player::Init()
 {
 	loadTexture(L"Player");
@@ -25,6 +28,8 @@ void Player::Init()
 	{
 		_collider->SetCheckCell(true);
 		_collider->Init(this,4);
+		// 스프라이트/이동은 그대로 두고, 판정 원 중심만 4px 아래로.
+		_collider->SetOffset(Vector(0.f, 4.f));
 	}
 }
 
@@ -48,6 +53,15 @@ void Player::Update(float deltaTime)
 	if (_subFireCooldown > 0.f)
 	{
 		_subFireCooldown -= deltaTime;
+	}
+
+	// 좌우 입력 없을 때(idle)만 실제로 쓰이지만, 타이머 자체는 매 프레임 그냥 흘러가게 둔다
+	// (idle로 전환되는 순간 애니메이션이 항상 프레임 0부터 시작하지 않고 자연스럽게 이어지도록).
+	_idleAnimTimer += deltaTime;
+	if (_idleAnimTimer >= PLAYER_IDLE_FRAME_DURATION)
+	{
+		_idleAnimTimer -= PLAYER_IDLE_FRAME_DURATION;
+		_idleAnimFrame = (_idleAnimFrame + 1) % PLAYER_IDLE_FRAME_COUNT;
 	}
 
 	_speed = _moveSpeed;
@@ -169,7 +183,7 @@ void Player::move(float x, float y)
 else if (x > 0)
     _renderer->Init(L"Player", 2);      // 오른쪽으로 이동 중
 else
-    _renderer->Init(L"Player", 1);      // 좌우 입력 없음
+    _renderer->Init(L"PlayerIdle", _idleAnimFrame, 0);      // 좌우 입력 없음: idle 반복 애니메이션
 
 	// 양옆
 	if (newPos.x <= GetWidth() * 0.5f)

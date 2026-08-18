@@ -92,6 +92,39 @@ namespace
 		return false;
 	}
 
+	// StarbowBreak도 마찬가지.
+	bool ContainsStarbowBreak(const vector<TimelineStep>& timeline)
+	{
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::StarbowBreak)
+				return true;
+		}
+		return false;
+	}
+
+	// PastClock도 마찬가지.
+	bool ContainsPastClock(const vector<TimelineStep>& timeline)
+	{
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::PastClock)
+				return true;
+		}
+		return false;
+	}
+
+	// QED도 마찬가지.
+	bool ContainsQED(const vector<TimelineStep>& timeline)
+	{
+		for (const TimelineStep& step : timeline)
+		{
+			if (step.pattern == BossPatternType::QED)
+				return true;
+		}
+		return false;
+	}
+
 	// 카고메 카고메(6페이즈) 튜닝 상수.
 	constexpr float KAGOME_GRID_SPACING = 40.f;			// 격자탄 한 알 사이 간격
 	constexpr float KAGOME_LINE_START_STAGGER = 0.1f;		// 가로/세로 웨이브에서 줄마다 시작이 밀리는 간격
@@ -117,6 +150,54 @@ namespace
 	constexpr float LOVE_MAZE_CIRCLE_SPEED = 100.f;		// 200 -> 100 (속도 절반)
 	constexpr float LOVE_MAZE_SPIRAL_BULLET_RADIUS = 7.f;	// LoveMazeSpiralGreen 14x16 기준
 	constexpr float LOVE_MAZE_CIRCLE_BULLET_RADIUS = 7.f;	// LoveMazeCircleBlue 16x16 기준
+
+	// 스타보우 브레이크(8페이즈) 튜닝 상수.
+	constexpr int32 STARBOW_BULLETS_PER_LINE = 15;			// 줄 하나당 탄 개수
+	constexpr float STARBOW_LINE_SPACING = 40.f;			// 줄 안에서 탄 사이 간격(대각선/가로/세로 공통)
+	constexpr float STARBOW_DIAGONAL_LINE_OFFSET = 100.f;	// 대각선 6줄끼리 서로 떨어진 간격(탄 간격과는 별개)
+	constexpr float STARBOW_DIAGONAL_Y_SHIFT = -100.f;		// 대각선 대형 전체를 화면 위쪽으로 옮기는 보정값(음수=위로)
+	constexpr float STARBOW_BULLET_SPAWN_INTERVAL = 0.03f;	// 한 줄 안에서 탄이 한 알씩 생기는 간격
+	constexpr float STARBOW_WAVE_PAUSE = 2.5f;				// 한 웨이브의 모든 줄이 다 스폰된 뒤 다음 웨이브까지 대기 시간
+	constexpr float STARBOW_RISE_DURATION = 1.0f;			// 스폰 직후 위로 떠오르는 시간
+	constexpr float STARBOW_RISE_HEIGHTS[3] = { 40.f, 80.f, 120.f };	// 떠오르는 높이(위 방향 이동 거리), 탄마다 무작위
+	constexpr float STARBOW_FALL_ACCEL_SLOW = 100.f;		// 낙하 가속도(느림)
+	constexpr float STARBOW_FALL_ACCEL_FAST = 150.f;		// 낙하 가속도(빠름). 느림/빠름 중 탄마다 무작위.
+	constexpr float STARBOW_SPAWN_X_JITTER = 15.f;			// 스폰 x좌표에 주는 무작위 지터(±). 격자처럼 딱 맞는 느낌을 깨기 위함.
+
+	// 과거를 새기는 시계(9페이즈) 튜닝 상수.
+	constexpr float PAST_CLOCK_FAN_INTERVAL = 0.7f;			// 위/아래 부채꼴 공유 발사 주기
+	constexpr int32 PAST_CLOCK_UPPER_FAN_COUNT = 30;			// 위쪽 270도 부채꼴 탄수(9도 간격)
+	constexpr float PAST_CLOCK_UPPER_FAN_SPREAD = 270.f;
+	constexpr float PAST_CLOCK_UPPER_FAN_SPEED = 200.f;
+	constexpr int32 PAST_CLOCK_LOWER_FAN_COUNT = 16;			// 아래쪽 120도 조준 부채꼴 탄수
+	constexpr float PAST_CLOCK_LOWER_FAN_SPREAD = 120.f;
+	constexpr float PAST_CLOCK_LOWER_FAN_SPEED = 100.f;
+	constexpr float PAST_CLOCK_FAN_BULLET_RADIUS = 14.f;		// IllusionFanRed(32x32) 기준 콜라이더
+
+	constexpr int32 PAST_CLOCK_PROPELLER_BLADE_COUNT = 4;		// 프로펠러 날개 개수(90도 간격)
+	constexpr float PAST_CLOCK_PROPELLER_BLADE_LENGTH = 200.f;	// 날개 길이
+	constexpr int32 PAST_CLOCK_PROPELLER_SEGMENT_COUNT = 32;	// 날개 하나당 콜라이더(LaserSegment) 개수
+	constexpr int32 PAST_CLOCK_PROPELLER_SEGMENT_RADIUS = 4;	// 콜라이더 반지름
+	// 회전/이동 속도는 요청 스펙에 없어서 임시로 정한 값 — 플레이테스트하면서 튜닝 필요.
+	constexpr float PAST_CLOCK_PROPELLER_ANGULAR_SPEED = 45.f;	// 초당 회전 각도(도)
+	constexpr float PAST_CLOCK_PROPELLER_MOVE_SPEED = 80.f;		// 초당 x축 이동 속도
+	constexpr float PAST_CLOCK_PROPELLER_MARGIN = 50.f;		// 화면 양 끝에서 이만큼 남기고 멈춤(x=50~550)
+	constexpr float PAST_CLOCK_PROPELLER_REST_DURATION = 2.0f;	// 끝에 도달해서 회전까지 멈추고 쉬는 시간
+
+	// Q.E.D. 495년의 파문(10페이즈) 튜닝 상수.
+	constexpr int32 QED_CIRCLE_BULLET_COUNT = 50;			// 원형탄 탄수(고정)
+	constexpr float QED_TIER_BASE_HP = 500.f;				// 이 HP에서 시작(0단계: 속도/주기 기본값)
+	constexpr float QED_HP_TIER_SIZE = 100.f;				// 이 HP만큼 깎일 때마다 한 단계씩
+	constexpr float QED_BASE_SPEED = 150.f;					// 0단계 속도
+	constexpr float QED_SPEED_STEP = 20.f;					// 단계마다 증가하는 속도
+	constexpr float QED_BASE_INTERVAL = 2.0f;				// 0단계 발사 주기
+	constexpr float QED_INTERVAL_STEP = 0.1f;				// 단계마다 감소하는 발사 주기
+	constexpr float QED_MIN_INTERVAL = 0.2f;				// 발사 주기 안전 하한
+	constexpr float QED_TOP_SPAWN_Y = 80.f;					// 최초 이후 웨이브가 터지는 화면 상단 y좌표
+	constexpr float QED_BULLET_RADIUS = 7.f;				// QEDPetalBlue(16x16) 기준 콜라이더
+	constexpr float STARBOW_BULLET_RADIUS = 7.f;			// Starbow 계열(16x16, etama3.png에서 크롭) 텍스처 기준 콜라이더.
+	// 색깔별 텍스처 키. etama3.png(y=32 행)의 3/14/12/9/7/5번째 탄을 순서대로 추출한 6색.
+	const wchar_t* STARBOW_COLOR_KEYS[6] = { L"StarbowRed", L"StarbowYellow", L"StarbowLime", L"StarbowCyan", L"StarbowBlue", L"StarbowMagenta" };
 }
 
 void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
@@ -210,7 +291,7 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	_phaseElapsedTime = 0.f;
 	_timelineIndex = 0;
 
-	
+
 	_moveTargetPos = Vector(GWinSizeX*0.5f, 150.f);
 
 	_moveTimerId = TimeManager::GetInstance().AddTimer([this]()
@@ -251,6 +332,18 @@ void Boss::Init(Vector pos, wstring key, vector<BossPhase> phases, int32 maxHp,
 	{
 		startLoveMazeSpellcard();
 	}
+	if (ContainsStarbowBreak(_phases[_curPhaseIndex].timeline))
+	{
+		startStarbowBreak();
+	}
+	if (ContainsPastClock(_phases[_curPhaseIndex].timeline))
+	{
+		startPastClockSpellcard();
+	}
+	if (ContainsQED(_phases[_curPhaseIndex].timeline))
+	{
+		startQEDSpellcard();
+	}
 }
 
 void Boss::Destroy()
@@ -279,6 +372,9 @@ void Boss::Destroy()
 
 	stopKagomeSpellcard();
 	stopLoveMazeSpellcard();
+	stopStarbowBreak();
+	stopPastClockSpellcard();
+	stopQEDSpellcard();
 
 	// 5페이즈 도중 보스가 죽으면 아직 살아있는 분신들도 같이 정리한다.
 	// Boss는 분신 포인터를 직접 들고 있지 않는다 — 분신이 플레이어 총알에 먼저 죽으면
@@ -309,6 +405,18 @@ void Boss::Update(float deltaTime)
 		updateKagomeBurst(deltaTime);
 		updateKagomeDisruption(deltaTime);
 	}
+	if (_starbowActive)
+	{
+		updateStarbowBreak(deltaTime);
+	}
+	if (_pastClockActive)
+	{
+		updatePastClockPropellers(deltaTime);
+	}
+	if (_qedActive)
+	{
+		updateQED(deltaTime);
+	}
 	// 이 페이즈 동안엔 랜덤 이동 타이머가 뭘 정해놨든 무시하고 매 프레임 중앙을 목표로 고정한다.
 	if (_curPhaseIndex == _fixedPosPhaseIndex)
 	{
@@ -325,6 +433,16 @@ void Boss::Update(float deltaTime)
 	if (_loveMazeActive)
 	{
 		_moveTargetPos = Vector(GWinSizeX * 0.5f, GWinSizeY * 0.5f);
+	}
+	// 9페이즈(과거를 새기는 시계) 동안은 화면 상단 중앙 고정.
+	if (_pastClockActive)
+	{
+		_moveTargetPos = Vector(GWinSizeX * 0.5f, 150.f);
+	}
+	// 10페이즈(Q.E.D.) 동안도 화면 상단 중앙 고정.
+	if (_qedActive)
+	{
+		_moveTargetPos = Vector(GWinSizeX * 0.5f, 150.f);
 	}
 
 	Vector toTarget = _moveTargetPos - GetPos();
@@ -365,7 +483,10 @@ void Boss::Update(float deltaTime)
 			timeline[_timelineIndex].pattern != BossPatternType::BorderAimedBurst&&
 			timeline[_timelineIndex].pattern != BossPatternType::Leavatein &&
 			timeline[_timelineIndex].pattern != BossPatternType::Kagome &&
-			timeline[_timelineIndex].pattern != BossPatternType::LoveMaze)
+			timeline[_timelineIndex].pattern != BossPatternType::LoveMaze &&
+			timeline[_timelineIndex].pattern != BossPatternType::StarbowBreak &&
+			timeline[_timelineIndex].pattern != BossPatternType::PastClock &&
+			timeline[_timelineIndex].pattern != BossPatternType::QED)
 		{
 			shootBullet(timeline[_timelineIndex].pattern);
 		}
@@ -543,6 +664,24 @@ void Boss::transitionToNextPhase()
 	if (ContainsLoveMaze(_phases[_curPhaseIndex].timeline))
 	{
 		startLoveMazeSpellcard();
+	}
+
+	stopStarbowBreak();
+	if (ContainsStarbowBreak(_phases[_curPhaseIndex].timeline))
+	{
+		startStarbowBreak();
+	}
+
+	stopPastClockSpellcard();
+	if (ContainsPastClock(_phases[_curPhaseIndex].timeline))
+	{
+		startPastClockSpellcard();
+	}
+
+	stopQEDSpellcard();
+	if (ContainsQED(_phases[_curPhaseIndex].timeline))
+	{
+		startQEDSpellcard();
 	}
 }
 
@@ -1583,4 +1722,373 @@ void Boss::shiftLoveMazeGapAndFireCircle()
 	}
 
 	_loveMazeCircleAngle += LOVE_MAZE_CIRCLE_ROTATION_SPEED;	// 쏠 때마다 살짝 회전시켜 겹겹이 쌓이는 효과
+}
+
+// ============================================================
+// 8페이즈: 스타보우 브레이크
+// 대각선("/" 또는 "\", 6줄) 혹은 십자(가로3줄+세로3줄) 중 하나의 대형을 무작위로 골라, 카고메 격자탄과
+// 같은 방식으로 줄마다 한 알씩 순차 스폰한다. 스폰된 탄은 그 자체(Bullet::Update)가 preStopTime 동안
+// 위로 떠오르다가, BulletRedirectMode::Down으로 전환되며 속도 0부터 fallAccel(느림/빠름 무작위)로
+// 재가속하며 떨어진다 — Boss 쪽은 스폰만 담당하고 상승/낙하는 전적으로 Bullet 내부 상태에 맡긴다.
+// 모든 줄의 스폰이 끝나면 STARBOW_WAVE_PAUSE만큼 쉬었다가 다음 웨이브(다른 대형)를 시작한다.
+// ============================================================
+
+void Boss::startStarbowBreak()
+{
+	_starbowActive = true;
+	for (StarbowLine& line : _starbowLines)
+		line.active = false;
+
+	_starbowState = StarbowState::Spawning;
+	_starbowStateTimer = 0.f;
+	startStarbowWave();
+}
+
+void Boss::stopStarbowBreak()
+{
+	_starbowActive = false;
+	for (StarbowLine& line : _starbowLines)
+		line.active = false;
+}
+
+// 대형 3종(슬래시/백슬래시/십자) 중 하나를 무작위로 골라 6개 줄을 세팅한다.
+void Boss::startStarbowWave()
+{
+	if (_isDead)
+		return;
+
+	StarbowFormationType formation = (StarbowFormationType)(rand() % 3);
+
+	if (formation == StarbowFormationType::DiagonalSlash || formation == StarbowFormationType::DiagonalBackslash)
+	{
+		// y = x + offset (슬래시) 또는 y = -x + offset (백슬래시) 6줄. 줄마다 오프셋이 STARBOW_DIAGONAL_LINE_OFFSET씩 다르다.
+		Vector step = (formation == StarbowFormationType::DiagonalSlash) ? Vector(STARBOW_LINE_SPACING, STARBOW_LINE_SPACING)
+																		  : Vector(STARBOW_LINE_SPACING, -STARBOW_LINE_SPACING);
+		// step.y가 슬래시는 +, 백슬래시는 -라서 line.pos를 왼쪽 끝(첫 탄)에 그대로 목표 y로 두면
+		// 슬래시는 목표 y보다 계속 아래로, 백슬래시는 계속 위로만 벌어져서 두 대형이 서로 다른 높이에
+		// 몰리는 것처럼 보인다. 첫 탄이 아니라 "줄 중앙(가운데 탄)"이 목표 y에 오도록 시작 y를 보정한다.
+		float centerYOffset = ((float)(STARBOW_BULLETS_PER_LINE - 1) * 0.5f) * step.y;
+		for (int32 i = 0; i < 6; ++i)
+		{
+			float offset = (i - 2.5f) * STARBOW_DIAGONAL_LINE_OFFSET;	// 중앙 기준 좌우로 벌어짐
+			StarbowLine& line = _starbowLines[i];
+			line.active = true;
+			line.pos = Vector(0.f, GWinSizeY * 0.5f + STARBOW_DIAGONAL_Y_SHIFT + offset - centerYOffset);
+			line.step = step;
+			line.remainingBullets = STARBOW_BULLETS_PER_LINE;
+			line.spawnTimer = 0.f;
+			line.colorKey = STARBOW_COLOR_KEYS[i % 6];
+		}
+	}
+	else
+	{
+		// 십자: 가로 3줄(화면 폭 전체) + 세로 3줄(화면 위쪽 600px 구간).
+		const float rowYs[3] = { 200.f, 400.f, 600.f };
+		const float colXs[3] = { 150.f, 300.f, 450.f };
+
+		for (int32 i = 0; i < 3; ++i)
+		{
+			StarbowLine& line = _starbowLines[i];
+			line.active = true;
+			line.pos = Vector(0.f, rowYs[i]);
+			line.step = Vector(STARBOW_LINE_SPACING, 0.f);
+			line.remainingBullets = STARBOW_BULLETS_PER_LINE;
+			line.spawnTimer = 0.f;
+			line.colorKey = STARBOW_COLOR_KEYS[i % 6];
+		}
+		for (int32 i = 0; i < 3; ++i)
+		{
+			StarbowLine& line = _starbowLines[3 + i];
+			line.active = true;
+			line.pos = Vector(colXs[i], 0.f);
+			line.step = Vector(0.f, STARBOW_LINE_SPACING);
+			line.remainingBullets = STARBOW_BULLETS_PER_LINE;
+			line.spawnTimer = 0.f;
+			line.colorKey = STARBOW_COLOR_KEYS[(3 + i) % 6];
+		}
+	}
+}
+
+// 한 줄을 한 프레임만큼 진행시킨다: 스폰 간격마다 탄 한 알씩 생성(상승->낙하는 Bullet 쪽에 맡김) -> 다음 칸으로 이동.
+void Boss::advanceStarbowLine(StarbowLine& line, float deltaTime)
+{
+	if (!line.active)
+		return;
+
+	line.spawnTimer -= deltaTime;
+	if (line.spawnTimer > 0.f)
+		return;
+	line.spawnTimer += STARBOW_BULLET_SPAWN_INTERVAL;
+
+	// 화면 여유범위(-32~+32) 밖이면 생성을 건너뛴다: Bullet::Update()의 화면밖 삭제 체크가
+	// 스폰 다음 프레임에 바로 지워버리는 것을 막기 위함(대각선 줄의 꼬리 부분에서 발생).
+	if (line.pos.x >= -32.f && line.pos.x <= (float)GWinSizeX + 32.f &&
+		line.pos.y >= -32.f && line.pos.y <= (float)GWinSizeY + 32.f)
+	{
+		float riseHeight = STARBOW_RISE_HEIGHTS[rand() % 3];
+		float riseSpeed = riseHeight / STARBOW_RISE_DURATION;
+		float fallAccel = (rand() % 2 == 0) ? STARBOW_FALL_ACCEL_SLOW : STARBOW_FALL_ACCEL_FAST;
+
+		// 줄 간격이 딱 맞아떨어지는 격자 느낌을 깨려고, 실제 스폰 x에만 지터를 준다(line.pos 자체는 건드리지 않아
+		// 줄의 다음 스폰 위치 계산은 그대로 규칙적으로 진행됨).
+		float jitterX = (float)(rand() % (int32)(STARBOW_SPAWN_X_JITTER * 2.f + 1.f)) - STARBOW_SPAWN_X_JITTER;
+		Vector spawnPos = Vector(line.pos.x + jitterX, line.pos.y);
+
+		Game::GetInstance().GetScene()->CreateBullet(spawnPos, BulletType::Enemy, Vector(0.f, -1.f), riseSpeed,
+			false, 180.f, 0.f, STARBOW_RISE_DURATION, 0.001f, BulletRedirectMode::Down,
+			line.colorKey, STARBOW_BULLET_RADIUS, false, -1.f, -1.f, fallAccel);
+	}
+
+	line.pos += line.step;
+	line.remainingBullets--;
+	if (line.remainingBullets <= 0)
+		line.active = false;
+}
+
+void Boss::updateStarbowBreak(float deltaTime)
+{
+	if (_starbowState == StarbowState::Waiting)
+	{
+		_starbowStateTimer -= deltaTime;
+		if (_starbowStateTimer <= 0.f)
+		{
+			_starbowState = StarbowState::Spawning;
+			startStarbowWave();
+		}
+		return;
+	}
+
+	bool anyLineActive = false;
+	for (StarbowLine& line : _starbowLines)
+	{
+		advanceStarbowLine(line, deltaTime);
+		anyLineActive |= line.active;
+	}
+
+	if (!anyLineActive)
+	{
+		_starbowState = StarbowState::Waiting;
+		_starbowStateTimer = STARBOW_WAVE_PAUSE;
+	}
+}
+
+// ============================================================
+// 9페이즈: 과거를 새기는 시계
+// 위(270도)/아래(120도, 플레이어 조준) 부채꼴을 같은 타이머(0.5초)로 동시에 쏘고, 날개 4장짜리
+// 프로펠러 레이저 2개가 화면 양쪽 끝(x=50/550)에서 출발해 서로 반대 방향으로 회전하며 이동하다가
+// 반대쪽 끝에 닿으면 회전까지 완전히 멈추고 2초 쉰 뒤, 방향을 뒤집어 다시 돈다 — 페이즈 끝까지 반복.
+// ============================================================
+
+void Boss::startPastClockSpellcard()
+{
+	_pastClockActive = true;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	struct PropellerSpawn { Vector pos; float dir; };
+	PropellerSpawn spawns[2] =
+	{
+		// 원래 y차이(500 vs 450 = 50)에서 100 더 벌려서 150차이로(가운데 475 기준 대칭),
+		// 이후 30씩 아래로 내렸다가, 바닥 여유 확보를 위해 다시 10씩 위로.
+		{ Vector(PAST_CLOCK_PROPELLER_MARGIN, 570.f), 1.f },								// (50,570)에서 오른쪽으로 출발
+		{ Vector((float)GWinSizeX - PAST_CLOCK_PROPELLER_MARGIN, 420.f), -1.f },			// (550,420)에서 왼쪽으로 출발
+	};
+
+	for (int32 p = 0; p < 2; ++p)
+	{
+		PastClockPropeller& propeller = _pastClockPropellers[p];
+		propeller.pivot = spawns[p].pos;
+		propeller.dir = spawns[p].dir;
+		propeller.state = PastClockPropellerState::Moving;
+		propeller.restTimer = 0.f;
+
+		for (int32 i = 0; i < PAST_CLOCK_PROPELLER_BLADE_COUNT; ++i)
+		{
+			float angleOffset = i * (360.f / PAST_CLOCK_PROPELLER_BLADE_COUNT);
+			Laser* blade = scene->CreateLaser(propeller.pivot, angleOffset, PAST_CLOCK_PROPELLER_BLADE_LENGTH,
+				PAST_CLOCK_PROPELLER_SEGMENT_COUNT, PAST_CLOCK_PROPELLER_SEGMENT_RADIUS);
+			blade->_bladeTexture = ResourceManager::GetInstance().GetTexture(L"OrbBlue");
+			blade->SetAngularSpeed(PAST_CLOCK_PROPELLER_ANGULAR_SPEED);
+			// 판정(콜라이더 반지름)은 그대로 두고 그림만 4px 더 두껍게.
+			blade->SetBladeThickness((float)(PAST_CLOCK_PROPELLER_SEGMENT_RADIUS * 2) + 4.f);
+			// 교차점(pivot) 장식은 날개 4장이 겹쳐 그리지 않도록 첫 번째 날개에만 붙인다.
+			if (i == 0)
+				blade->_guardTexture = ResourceManager::GetInstance().GetTexture(L"PastClockGuard");
+			propeller.blades[i] = blade;
+		}
+	}
+
+	TimeManager::GetInstance().Remove(_pastClockFanTimerId);
+	_pastClockFanTimerId = TimeManager::GetInstance().AddTimer([this]() { shootPastClockFans(); }, PAST_CLOCK_FAN_INTERVAL, true);
+}
+
+void Boss::stopPastClockSpellcard()
+{
+	_pastClockActive = false;
+	TimeManager::GetInstance().Remove(_pastClockFanTimerId);
+	_pastClockFanTimerId = -1;
+
+	for (PastClockPropeller& propeller : _pastClockPropellers)
+	{
+		for (Laser*& blade : propeller.blades)
+		{
+			if (blade != nullptr)
+			{
+				blade->Destroy();
+				blade = nullptr;
+			}
+		}
+	}
+}
+
+void Boss::shootPastClockFans()
+{
+	if (_isDead)
+		return;
+
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_attackPoseTimer = 0.3f;
+
+	// 위: 270도, 위(0,-1) 방향 중심 — 아래쪽 90도 구간만 비고 나머지는 거의 전방위.
+	scene->FireFan(GetPos(), BulletType::Enemy, Vector(0.f, -1.f), PAST_CLOCK_UPPER_FAN_SPREAD,
+		PAST_CLOCK_UPPER_FAN_COUNT, PAST_CLOCK_UPPER_FAN_SPEED, L"IllusionFanRed", PAST_CLOCK_FAN_BULLET_RADIUS);
+
+	// 아래: 120도, 그 순간 플레이어 방향 중심으로 조준.
+	Player* player = scene->GetPlayer();
+	Vector aimDir = (player != nullptr) ? (player->GetPos() - GetPos()) : Vector(0.f, 1.f);
+	aimDir.Normalize();
+	scene->FireFan(GetPos(), BulletType::Enemy, aimDir, PAST_CLOCK_LOWER_FAN_SPREAD,
+		PAST_CLOCK_LOWER_FAN_COUNT, PAST_CLOCK_LOWER_FAN_SPEED, L"IllusionFanRed", PAST_CLOCK_FAN_BULLET_RADIUS);
+}
+
+void Boss::updatePastClockPropellers(float deltaTime)
+{
+	if (_isDead)
+		return;
+
+	const float xMin = PAST_CLOCK_PROPELLER_MARGIN;
+	const float xMax = (float)GWinSizeX - PAST_CLOCK_PROPELLER_MARGIN;
+
+	for (PastClockPropeller& propeller : _pastClockPropellers)
+	{
+		if (propeller.state == PastClockPropellerState::Resting)
+		{
+			propeller.restTimer -= deltaTime;
+			if (propeller.restTimer <= 0.f)
+			{
+				propeller.dir = -propeller.dir;
+				propeller.state = PastClockPropellerState::Moving;
+				for (Laser* blade : propeller.blades)
+				{
+					if (blade != nullptr)
+						blade->SetAngularSpeed(PAST_CLOCK_PROPELLER_ANGULAR_SPEED);
+				}
+			}
+			continue;
+		}
+
+		propeller.pivot.x += propeller.dir * PAST_CLOCK_PROPELLER_MOVE_SPEED * deltaTime;
+
+		bool reachedBound = (propeller.dir > 0.f && propeller.pivot.x >= xMax) ||
+							 (propeller.dir < 0.f && propeller.pivot.x <= xMin);
+		if (reachedBound)
+		{
+			propeller.pivot.x = std::clamp(propeller.pivot.x, xMin, xMax);
+			propeller.state = PastClockPropellerState::Resting;
+			propeller.restTimer = PAST_CLOCK_PROPELLER_REST_DURATION;
+			for (Laser* blade : propeller.blades)
+			{
+				if (blade != nullptr)
+					blade->SetAngularSpeed(0.f);
+			}
+		}
+
+		for (Laser* blade : propeller.blades)
+		{
+			if (blade != nullptr)
+				blade->SetPivot(propeller.pivot);
+		}
+	}
+}
+
+// ============================================================
+// 10페이즈: Q.E.D. 495년의 파문
+// 원형탄(40발 고정)을 최초 1회는 보스 위치에서, 그 다음부터는 화면 상단의 무작위 위치에서 계속 터뜨린다.
+// 각 탄은 좌/우/위 벽에서 딱 1번만 반사(Bullet::_reflectOffWalls)하고, 아래로 빠지면 그대로 삭제된다.
+// HP가 QED_HP_TIER_SIZE(100)만큼 깎일 때마다 속도는 +QED_SPEED_STEP, 발사 주기는 -QED_INTERVAL_STEP로
+// 계단식으로 빨라진다 — 타이머를 고정 간격으로 걸어두는 대신, 매 프레임 직접 카운트다운하면서 쏘는
+// 순간마다 그때그때의 HP로 다음 주기를 다시 계산한다.
+// ============================================================
+
+void Boss::startQEDSpellcard()
+{
+	_qedActive = true;
+	_qedFirstBurstFired = false;
+	_qedFireTimer = 0.f;	// 0으로 두면 다음 프레임 즉시 첫 발동(보스 위치에서 시작)
+}
+
+void Boss::stopQEDSpellcard()
+{
+	_qedActive = false;
+}
+
+void Boss::updateQED(float deltaTime)
+{
+	if (_isDead)
+		return;
+
+	_qedFireTimer -= deltaTime;
+	if (_qedFireTimer > 0.f)
+		return;
+
+	Vector origin;
+	if (!_qedFirstBurstFired)
+	{
+		origin = GetPos();
+		_qedFirstBurstFired = true;
+	}
+	else
+	{
+		origin = Vector((float)(rand() % GWinSizeX), QED_TOP_SPAWN_Y);
+	}
+
+	shootQEDCircle(origin);
+
+	float tier = std::floor((QED_TIER_BASE_HP - (float)_hp) / QED_HP_TIER_SIZE);
+	if (tier < 0.f)
+		tier = 0.f;
+
+	float interval = QED_BASE_INTERVAL - tier * QED_INTERVAL_STEP;
+	if (interval < QED_MIN_INTERVAL)
+		interval = QED_MIN_INTERVAL;
+
+	_qedFireTimer = interval;
+}
+
+void Boss::shootQEDCircle(Vector origin)
+{
+	GameScene* scene = Game::GetInstance().GetScene();
+	if (scene == nullptr)
+		return;
+
+	_attackPoseTimer = 0.3f;
+
+	float tier = std::floor((QED_TIER_BASE_HP - (float)_hp) / QED_HP_TIER_SIZE);
+	if (tier < 0.f)
+		tier = 0.f;
+	float speed = QED_BASE_SPEED + tier * QED_SPEED_STEP;
+
+	for (int32 i = 0; i < QED_CIRCLE_BULLET_COUNT; ++i)
+	{
+		float radian = DegreeToRadian(i * (360.f / QED_CIRCLE_BULLET_COUNT));
+		Vector dir(cosf(radian), sinf(radian));
+		scene->CreateBullet(origin, BulletType::Enemy, dir, speed,
+			false, 180.f, 0.f, 0.f, 0.f, BulletRedirectMode::None,
+			L"QEDPetalBlue", QED_BULLET_RADIUS, false, -1.f, -1.f, 0.f, true);	// reflectOffWalls=true
+	}
 }

@@ -10,20 +10,31 @@ namespace
 {
 	constexpr float SLIDE_HOLD_DURATION = 2.0f;	// end01/end02가 페이드아웃 전까지 떠있는 시간
 	constexpr float SLIDE_FADE_DURATION = 0.8f;	// 검은 화면으로 페이드아웃되는 시간
+	constexpr float EXTRA_CREDIT_DURATION = 3.0f;	// 엑스트라 클리어 문구가 떠있는 시간
 }
 
 void EndingScene::Init()
 {
-	ResourceManager::GetInstance().LoadTexture(L"StageResultBG", L"StageResultBG.bmp", -1);
-	ResourceManager::GetInstance().LoadTexture(L"EndSlide1", L"end01.bmp", -1);
-	ResourceManager::GetInstance().LoadTexture(L"EndSlide2", L"end02.bmp", -1);
-	ResourceManager::GetInstance().LoadTexture(L"EndSlide3", L"end06.bmp", -1);
-
 	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
 	AddFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
 	_font = CreateFont(-28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 		HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 		DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
+
+	if (_isExtra)
+	{
+		// 점수/삽화 없이 문구만 보여주므로 다른 텍스처는 로드할 필요가 없다.
+		_creditFont = CreateFont(-48, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+			HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+			DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
+		_phase = EndingPhase::ExtraCredit;
+		return;
+	}
+
+	ResourceManager::GetInstance().LoadTexture(L"StageResultBG", L"StageResultBG.bmp", -1);
+	ResourceManager::GetInstance().LoadTexture(L"EndSlide1", L"end01.bmp", -1);
+	ResourceManager::GetInstance().LoadTexture(L"EndSlide2", L"end02.bmp", -1);
+	ResourceManager::GetInstance().LoadTexture(L"EndSlide3", L"end06.bmp", -1);
 }
 
 void EndingScene::Cleanup()
@@ -33,6 +44,11 @@ void EndingScene::Cleanup()
 		DeleteObject(_font);
 		_font = nullptr;
 	}
+	if (_creditFont)
+	{
+		DeleteObject(_creditFont);
+		_creditFont = nullptr;
+	}
 
 	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
 	RemoveFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
@@ -40,6 +56,16 @@ void EndingScene::Cleanup()
 
 void EndingScene::Update(float deltaTime)
 {
+	if (_phase == EndingPhase::ExtraCredit)
+	{
+		_extraCreditTimer += deltaTime;
+		if (_extraCreditTimer >= EXTRA_CREDIT_DURATION)
+		{
+			SceneManager::GetInstance().ChangeScene(new TitleScene());
+		}
+		return;
+	}
+
 	if (_phase == EndingPhase::Score)
 	{
 		if (InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
@@ -86,6 +112,29 @@ void EndingScene::Render(HDC hdc)
 {
 	RECT rect{ 0, 0, GWindowSizeX, GWinSizeY };
 	FillRect(hdc, &rect, (HBRUSH)GetStockObject(BLACK_BRUSH));
+
+	if (_phase == EndingPhase::ExtraCredit)
+	{
+		HFONT prevFont = _creditFont ? (HFONT)SelectObject(hdc, _creditFont) : nullptr;
+		COLORREF prevColor = SetTextColor(hdc, RGB(255, 255, 255));
+		int32 prevBkMode = SetBkMode(hdc, TRANSPARENT);
+
+		const wchar_t* line1 = L"2026년 9월 10일 동방홍마향remake 많관부~";
+		const wchar_t* line2 = L"제작자 9.8";
+
+		RECT line1Rect{ 0, GWinSizeY / 2 - 60, GWindowSizeX, GWinSizeY / 2 };
+		RECT line2Rect{ 0, GWinSizeY / 2 + 10, GWindowSizeX, GWinSizeY / 2 + 70 };
+		DrawText(hdc, line1, -1, &line1Rect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+		DrawText(hdc, line2, -1, &line2Rect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+
+		SetTextColor(hdc, prevColor);
+		SetBkMode(hdc, prevBkMode);
+		if (prevFont)
+		{
+			SelectObject(hdc, prevFont);
+		}
+		return;
+	}
 
 	if (_phase == EndingPhase::Score)
 	{

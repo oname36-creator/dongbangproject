@@ -72,6 +72,10 @@ void Game::Init(HWND hwnd)
 	AudioManager::GetInstance().LoadSound(L"Stage3BossBGM", L"Stage3BossBGM.wav");
 	AudioManager::GetInstance().LoadSound(L"ExtraBGM", L"ExtraBGM.wav");
 
+	// 저장된 볼륨 설정 적용 (SaveManager가 AudioManager보다 먼저 초기화되어 있어야 함)
+	AudioManager::GetInstance().SetBGMVolume(SaveManager::GetInstance().GetBGMVolume());
+	AudioManager::GetInstance().SetSFXVolume(SaveManager::GetInstance().GetSFXVolume());
+
 	// GameScene 초기화
 	SceneManager::GetInstance().ChangeScene(new LoadingScene());
 

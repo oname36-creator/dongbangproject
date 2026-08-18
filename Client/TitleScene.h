@@ -27,4 +27,8 @@ private:
 	vector<TitleMenuItem> _menuItems;
 	int32 _selectedIndex = 0;
 	bool _menuOpen = false;
+
+	// 설정 화면: 0=BGM 음량, 1=효과음 음량, 2=뒤로가기.
+	bool _inSettings = false;
+	int32 _settingsIndex = 0;
 };

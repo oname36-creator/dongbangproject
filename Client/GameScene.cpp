@@ -179,7 +179,16 @@ static const vector<BossPhase> g_extraBossPhases =
 	{ { { 0.f, BossPatternType::Kagome } }, 1.0f, 2000 },
 	// 7페이즈: "사랑의 미로". Spiral(연속 회전)과 Circle(주기적 링)이 동시에 돌면서, 항상 같은 20도
 	// 빈 구간을 비우고 쏜다. 그 구간은 Spiral이 팔을 새로 쏠 때마다 양옆 중 무작위로 한 칸씩 이동한다.
-	{ { { 0.f, BossPatternType::LoveMaze } }, 1.0f, 0 }
+	{ { { 0.f, BossPatternType::LoveMaze } }, 1.0f, 1500 },
+	// 8페이즈: "스타보우 브레이크". 대각선("/" 또는 "\")이나 십자 대형 중 하나를 무작위로 골라 색깔별
+	// 탄이 한 알씩 순차 스폰되고, 각 탄은 잠깐 떠올랐다가 가속하며 떨어진다. 생성 -> 2초 대기 반복.
+	{ { { 0.f, BossPatternType::StarbowBreak } }, 1.0f, 1000 },
+	// 9페이즈: "과거를 새기는 시계". 위(270도)/아래(120도, 조준) 부채꼴을 같은 타이머로 동시에 쏘고,
+	// 날개 4장짜리 프로펠러 레이저 2개가 화면 양쪽에서 서로 반대 방향으로 오간다.
+	{ { { 0.f, BossPatternType::PastClock } }, 1.0f, 500 },
+	// 10페이즈: "Q.E.D. 495년의 파문". 원형탄(40발)이 최초엔 보스 위치에서, 이후엔 화면 상단 무작위
+	// 위치에서 계속 터진다. 좌/우/위 벽에서 딱 1번 반사하고, HP 100 깎일 때마다 계단식으로 빨라진다.
+	{ { { 0.f, BossPatternType::QED } }, 1.0f, 0 }
 };
 
 // 생성자/소멸자를 cpp 작성하면, Scene의 인스턴스화는 cpp에서 일어남.
@@ -216,7 +225,8 @@ void GameScene::Init()
 	_bulletPool.Init(3000);
 	_enemyPool.Init(1000);
 	_itemPool.Init(2000);
-	_laserSegmentPool.Init(200); // 동시에 존재 가능한 칼날 개수 x 칼날당 세그먼트 개수 기준으로 여유있게. 부족해지면 올릴 것
+	// 9페이즈(과거를 새기는 시계) 프로펠러가 날개 4장 x 2세트 x 32세그먼트 = 256개를 동시에 쓰므로 300으로 상향.
+	_laserSegmentPool.Init(300); // 동시에 존재 가능한 칼날 개수 x 칼날당 세그먼트 개수 기준으로 여유있게. 부족해지면 올릴 것
 
 	// Scene에 필요한 객체 생성
 	createObjects();
@@ -669,6 +679,7 @@ if(_isPaused)
 				BombClearBullets();
 
 				_stageElapsedTime = 0.f;
+				_clearedExtra = false;
 				_state = GameSceneState :: Clear;
 			}
 			break;
@@ -727,12 +738,13 @@ if(_isPaused)
 			{
 				BombClearBullets();
 				_stageElapsedTime = 0.f;
+				_clearedExtra = true;
 				_state = GameSceneState :: Clear;
 			}
 			break;
 		case GameSceneState :: Clear :
 			SaveManager::GetInstance().UnlockExtra();
-			SceneManager::GetInstance().ChangeScene(new EndingScene(_score));
+			SceneManager::GetInstance().ChangeScene(new EndingScene(_score, _clearedExtra));
 			break;
 		case GameSceneState :: GameOver : 
 			if(InputManager::GetInstance().GetButtonDown(KeyType::ATTACK))
@@ -1063,7 +1075,8 @@ BossIllusion* GameScene::CreateBossIllusion(Vector pos, wstring key, int32 hp, f
 
 void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float speed, bool isHoming, float turnSpeed, float accel,
 							  float preStopTime, float launchDelay, BulletRedirectMode redirectMode, wstring customTextureKey,
-							  float colliderSizeOverride, bool faceDirection, float targetSpeed, float lifeTime)
+							  float colliderSizeOverride, bool faceDirection, float targetSpeed, float lifeTime, float fallAccel,
+							  bool reflectOffWalls)
 {
 	// 어떤 경로로 호출되든(타이머 콜백 포함) 일시정지 중에는 새 총알을 만들지 않는다.
 	if (_isPaused)
@@ -1075,7 +1088,7 @@ void GameScene::CreateBullet(Vector pos, BulletType type, Vector dir, float spee
 	if(bullet == nullptr)
 		return;
 
-	bullet->Init(type, dir, speed, isHoming, turnSpeed, accel, preStopTime, launchDelay, redirectMode, customTextureKey, colliderSizeOverride, faceDirection, targetSpeed, lifeTime);
+	bullet->Init(type, dir, speed, isHoming, turnSpeed, accel, preStopTime, launchDelay, redirectMode, customTextureKey, colliderSizeOverride, faceDirection, targetSpeed, lifeTime, fallAccel, reflectOffWalls);
 	bullet->SetPos(pos);
 
 	_reservedAdd.push_back(bullet);

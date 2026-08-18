@@ -32,6 +32,9 @@ public:
 	void SetAngularSpeed(float degreePerSec) { _angularSpeed = degreePerSec; }
 	float GetCurrentAngle() const { return _currentAngle; }
 	float GetLength() const { return _length; }
+
+	// 칼날 그림 두께를 콜라이더 반지름과 다르게(주로 더 두껍게) 그리고 싶을 때 사용. 판정 크기는 그대로.
+	void SetBladeThickness(float thickness) { _bladeThickness = thickness; }
 	class Texture* _bladeTexture = nullptr;
 	// 보스와 맞닿는 칼날 밑동(pivot) 자리에 그려주는 장식 스프라이트. 회전 없이 pivot에 그대로 그린다. nullptr면 안 그림.
 	class Texture* _guardTexture = nullptr;
@@ -43,6 +46,7 @@ private:
 	float _length = 0.f;
 	int _segmentCount = 0;
 	int _segmentRadius = 0;
+	float _bladeThickness = -1.f;	// -1이면 기존처럼 segmentRadius*2를 그대로 그림 두께로 쓴다.
 
 	vector<class LaserSegment*> _segments;
 

@@ -1,6 +1,7 @@
 {
   "GameScene": {
     "Player": { "fileName": "Player.bmp", "transparent": [255, 0, 255], "countX": 3, "countY": 1 },
+    "PlayerIdle": { "fileName": "PlayerIdle.bmp", "transparent": [255, 0, 255], "countX": 4, "countY": 1 },
     "Enemy1": { "fileName": "Enemy1.bmp", "transparent": [255, 0, 255], "countX": 8, "countY": 1, "dur": 0.56, "loop": true },
     "Enemy2": { "fileName": "Enemy2.bmp", "transparent": [255, 0, 255], "countX": 8, "countY": 1, "dur": 0.56, "loop": true },
     "Enemy3": { "fileName": "Enemy3.bmp", "transparent": [255, 0, 255], "countX": 8, "countY": 1, "dur": 0.56, "loop": true },
@@ -147,6 +148,14 @@
     "IllusionFanBlue": { "fileName": "IllusionFanBlue.bmp", "transparent": [255, 0, 255] },
     "IllusionFanGreen": { "fileName": "IllusionFanGreen.bmp", "transparent": [255, 0, 255] },
     "IllusionFanYellow": { "fileName": "IllusionFanYellow.bmp", "transparent": [255, 0, 255] },
+    "StarbowRed": { "fileName": "StarbowRed.bmp", "transparent": [255, 0, 255] },
+    "StarbowYellow": { "fileName": "StarbowYellow.bmp", "transparent": [255, 0, 255] },
+    "StarbowLime": { "fileName": "StarbowLime.bmp", "transparent": [255, 0, 255] },
+    "StarbowCyan": { "fileName": "StarbowCyan.bmp", "transparent": [255, 0, 255] },
+    "StarbowBlue": { "fileName": "StarbowBlue.bmp", "transparent": [255, 0, 255] },
+    "StarbowMagenta": { "fileName": "StarbowMagenta.bmp", "transparent": [255, 0, 255] },
+    "PastClockGuard": { "fileName": "PastClockGuard.bmp", "transparent": [255, 0, 255] },
+    "QEDPetalBlue": { "fileName": "QEDPetalBlue.bmp", "transparent": [255, 0, 255] },
     "OrbMagenta": { "fileName": "OrbMagenta.bmp", "transparent": [255, 0, 255] },
     "OrbBlue": { "fileName": "OrbBlue.bmp", "transparent": [255, 0, 255] },
     "BombFace": { "fileName": "BombFace.bmp", "transparent": [255, 0, 255] },

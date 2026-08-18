@@ -8,7 +8,7 @@ public:
 	void Init(BulletType type, Vector dir, float speed, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
 			  float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
 			  wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f,
-			  float lifeTime = -1.f);
+			  float lifeTime = -1.f, float fallAccel = 0.f, bool reflectOffWalls = false);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 
@@ -53,6 +53,11 @@ private:
 	float _preStopTime = 0.f;
 	float _launchDelay = 0.f;
 	BulletRedirectMode _redirectMode = BulletRedirectMode::None;
+	float _fallAccel = 0.f;	// BulletRedirectMode::Down 전환 시 적용할 가속도(스타보우 브레이크 낙하용)
+
+	// true면 화면 좌/우/위 벽에 닿는 순간 그 축의 방향만 반전(입사각=반사각)하고 딱 1번만 반사한다.
+	// 아래쪽은 반사 대상이 아니라 기존 화면밖 삭제 로직을 그대로 탄다.
+	bool _reflectOffWalls = false;
 
 	float _lifeTime = -1.f;	// -1이면 기존처럼 화면 밖으로 나가야만 삭제. 0 이상이면 그 시간(초)이 지나면 위치와 무관하게 자동 삭제.
 
