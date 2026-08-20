@@ -22,7 +22,9 @@ class GameScene : public Scene
 public:
 	// vector<T> 풀에서 사용하는 Enemy,Bullet 값자체를 전방선언으로 해결하기 위해
 	// Scene의 생성자와 소멸자는 cpp 쪽에 구현을 해야한다.
-	GameScene();
+	// startInExtra=true면 스테이지1 도입부 대신 곧장 엑스트라(웨이브+보스)로 시작한다.
+	// (타이틀의 "엑스트라" 메뉴 전용 — 언락 후에도 일반 진행은 항상 false로 시작)
+	GameScene(bool startInExtra = false);
 	~GameScene();
 
 	virtual void Init() override;
@@ -89,6 +91,8 @@ public:
 	void FireCross(float y, BulletType type, float speed);
 
 	void CreateEffect(Vector pos);
+	// 플레이어 탄이 적/보스에 명중할 때마다 그 지점에 0.1초짜리 타격 임팩트를 띄운다.
+	void CreateHitEffect(Vector pos);
 	void ClearEnemyBullets();
 	void ClearBossIllusions();	// Boss 레이어에 남아있는 분신(BossIllusion)만 골라서 정리 (본체는 건드리지 않음)
 	void BombClearBullets();	// 폭탄 전용: 적 탄환을 점수 아이템으로 바꿔서 플레이어에게 자동 회수시킨다
@@ -214,6 +218,7 @@ private:
 	class Boss* _boss = nullptr;
 	bool _bossSpawned = false;
 	bool _clearedExtra = false;	// Clear 상태 진입 시점에 ExtraBoss를 잡아서 온 건지(true) Stage3Boss인지(false)
+	bool _startInExtra = false;	// 생성자로 받은, 곧장 엑스트라로 시작할지 여부
 
 	// 컨티뉴 시스템: 최대 3번까지, 몇 번째를 선택 중인지(Yes/No)
 	int32 _continueCount = 0;

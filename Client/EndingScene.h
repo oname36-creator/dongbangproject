@@ -26,6 +26,7 @@ private:
 	bool _isExtra = false;
 	HFONT _font = nullptr;
 	HFONT _creditFont = nullptr;
+	HFONT _smallCreditFont = nullptr;	// 엑스트라 크레딧 하단의 10px 기여자 표기용
 
 	EndingPhase _phase = EndingPhase::Score;
 	int32 _slideIndex = 0;		// 0=end01, 1=end02, 2=end06

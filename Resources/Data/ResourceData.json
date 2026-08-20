@@ -2,6 +2,7 @@
   "GameScene": {
     "Player": { "fileName": "Player.bmp", "transparent": [255, 0, 255], "countX": 3, "countY": 1 },
     "PlayerIdle": { "fileName": "PlayerIdle.bmp", "transparent": [255, 0, 255], "countX": 4, "countY": 1 },
+    "HitImpact": { "fileName": "HitImpact.bmp", "transparent": [255, 0, 255], "countX": 1, "countY": 1, "dur": 0.1, "loop": false },
     "Enemy1": { "fileName": "Enemy1.bmp", "transparent": [255, 0, 255], "countX": 8, "countY": 1, "dur": 0.56, "loop": true },
     "Enemy2": { "fileName": "Enemy2.bmp", "transparent": [255, 0, 255], "countX": 8, "countY": 1, "dur": 0.56, "loop": true },
     "Enemy3": { "fileName": "Enemy3.bmp", "transparent": [255, 0, 255], "countX": 8, "countY": 1, "dur": 0.56, "loop": true },

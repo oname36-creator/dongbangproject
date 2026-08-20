@@ -5,6 +5,7 @@
 #include "TitleScene.h"
 #include "ResourceManager.h"
 #include "Texture.h"
+#include "AudioManager.h"
 
 namespace
 {
@@ -15,6 +16,9 @@ namespace
 
 void EndingScene::Init()
 {
+	// 일반/엑스트라 엔딩 공통으로 재생.
+	AudioManager::GetInstance().PlayBGM(L"EndingBGM");
+
 	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
 	AddFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
 	_font = CreateFont(-28, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
@@ -25,6 +29,9 @@ void EndingScene::Init()
 	{
 		// 점수/삽화 없이 문구만 보여주므로 다른 텍스처는 로드할 필요가 없다.
 		_creditFont = CreateFont(-48, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
+			HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+			DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
+		_smallCreditFont = CreateFont(-10, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
 			HANGUL_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 			DEFAULT_PITCH | FF_DONTCARE, L"Griun Fromsol");
 		_phase = EndingPhase::ExtraCredit;
@@ -49,6 +56,13 @@ void EndingScene::Cleanup()
 		DeleteObject(_creditFont);
 		_creditFont = nullptr;
 	}
+	if (_smallCreditFont)
+	{
+		DeleteObject(_smallCreditFont);
+		_smallCreditFont = nullptr;
+	}
+
+	AudioManager::GetInstance().StopBGM();
 
 	fs::path fontPath = ResourceManager::GetInstance().GetResourcePath() / L"Fonts/Griun_Fromsol-Rg.ttf";
 	RemoveFontResourceExW(fontPath.c_str(), FR_PRIVATE, 0);
@@ -126,6 +140,19 @@ void EndingScene::Render(HDC hdc)
 		RECT line2Rect{ 0, GWinSizeY / 2 + 10, GWindowSizeX, GWinSizeY / 2 + 70 };
 		DrawText(hdc, line1, -1, &line1Rect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
 		DrawText(hdc, line2, -1, &line2Rect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+
+		if (_smallCreditFont)
+		{
+			SelectObject(hdc, _smallCreditFont);
+
+			const wchar_t* line3 = L"기획 아이디어 : 김민성";
+			const wchar_t* line4 = L"회전함수 제공 : 이승호";
+
+			RECT line3Rect{ 0, GWinSizeY / 2 + 90, GWindowSizeX, GWinSizeY / 2 + 105 };
+			RECT line4Rect{ 0, GWinSizeY / 2 + 105, GWindowSizeX, GWinSizeY / 2 + 120 };
+			DrawText(hdc, line3, -1, &line3Rect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+			DrawText(hdc, line4, -1, &line4Rect, DT_CENTER | DT_SINGLELINE | DT_VCENTER | DT_NOCLIP);
+		}
 
 		SetTextColor(hdc, prevColor);
 		SetBkMode(hdc, prevBkMode);

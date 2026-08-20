@@ -106,6 +106,7 @@ void BossIllusion::OnEnter(Actor* other) // other : Bullet
 		Bullet* bullet = static_cast<Bullet*>(other);
 		if (bullet && bullet->GetBulletType() == BulletType::Player)
 		{
+			Game::GetInstance().GetScene()->CreateHitEffect(bullet->GetPos());
 			_hp -= 1;
 			bullet->Destroy();
 

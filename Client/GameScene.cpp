@@ -166,7 +166,7 @@ static const vector<BossPhase> g_extraBossPhases =
 		{ 4.5f, BossPatternType::AimedSpread } }, 6.0f, 4500 },
 	// 2페이즈: ConvergingBurst — 플레이어 방향으로 3발이 느리게/보통/빠르게 동시에 나갔다가 같은 속도로 수렴해서 정렬된다.
 	{ { { 0.f, BossPatternType::ConvergingBurst } }, 1.0f, 4000 },
-	// 3페이즈(실험용): 마법진 6개가 화면 테두리를 돌면서 조준탄을 계속 쏜다.
+	// 3페이즈: 마법진 6개가 화면 테두리를 돌면서 조준탄을 계속 쏜다.
 	{ { { 0.f, BossPatternType::BorderAimedBurst } }, 1.0f, 3500 },
 	// 4페이즈
 	{ { { 0.f, BossPatternType::Leavatein } }, 1.0f, 3000 },
@@ -195,7 +195,8 @@ static const vector<BossPhase> g_extraBossPhases =
 // ObjectPool<T> (vector<T>) 값 자체를 가지고 있는 풀을 생성하는것도,
 // cpp에서 인스턴스화할때 생성됨.
 // 이때는 Bullet/Enemy #include 완료 상태
-GameScene::GameScene() 
+GameScene::GameScene(bool startInExtra)
+	: _startInExtra(startInExtra)
 {
 }
 GameScene::~GameScene()
@@ -231,7 +232,20 @@ void GameScene::Init()
 	// Scene에 필요한 객체 생성
 	createObjects();
 
-	TimeManager::GetInstance().AddTimer([this](){ _state = GameSceneState::Playing; AudioManager::GetInstance().PlayBGM(L"Stage1WaveBGM"); showStageBanner(1); }, 2.0f, false);
+	if (_startInExtra)
+	{
+		// createObjects()가 배경을 일단 World_BG(스테이지1용)로 깔아놔서, 2초짜리 지연 타이머를 쓰면
+		// 그 사이에 스테이지1 배경이 잠깐 보였다 바뀌는 것처럼 보인다. 대기 없이 바로 전환한다.
+		_state = GameSceneState::Extra;
+		_extraItemsSpawned = false;
+		if (_bgLayer1) _bgLayer1->ChangeTexture(L"Stage3BossBG", 0.f, 0.f);
+		if (_bgLayer2) _bgLayer2->ChangeTexture(L"Stage3BossBG", 0.f, 0.f);
+		AudioManager::GetInstance().PlayBGM(L"ExtraBGM");
+	}
+	else
+	{
+		TimeManager::GetInstance().AddTimer([this](){ _state = GameSceneState::Playing; AudioManager::GetInstance().PlayBGM(L"Stage1WaveBGM"); showStageBanner(1); }, 2.0f, false);
+	}
 	// Grid 미리 생성
 	_gridCountX = (int32)_mapSize.x / _gridSize;
 	_gridCountY = (int32)_mapSize.y / _gridSize;
@@ -357,6 +371,7 @@ if(_isPaused)
 		}
 	}
 
+	/* 디버그 스테이지 점프 키(KEY_1~4). 필요하면 다시 주석 풀어서 쓸 것.
 	if (InputManager::GetInstance().GetButtonDown(KeyType::KEY_1))
 	{
 		if (_boss) _boss->Destroy();
@@ -414,6 +429,7 @@ if(_isPaused)
 		// 웨이브/보스 구간 모두 같은 BGM을 그대로 쓴다.
 		AudioManager::GetInstance().PlayBGM(L"ExtraBGM");
 	}
+	*/
 
 
 	switch(_state)
@@ -1226,6 +1242,15 @@ void GameScene::CreateEffect(Vector pos)
 {
 	Effect* effect = new Effect();
 	effect->Init(L"Effect");
+	effect->SetPos(pos);
+
+	_reservedAdd.push_back(effect);
+}
+
+void GameScene::CreateHitEffect(Vector pos)
+{
+	Effect* effect = new Effect();
+	effect->Init(L"HitImpact");	// 단일 프레임 + dur 0.1초라 재생 끝나면(Effect::Update의 IsEnd 체크) 자동 삭제된다.
 	effect->SetPos(pos);
 
 	_reservedAdd.push_back(effect);

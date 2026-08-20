@@ -101,11 +101,13 @@ void Player::Update(float deltaTime)
 	{
 		move(0,0); 
 	}
+	/* 디버그 무적 토글. 필요하면 다시 주석 풀어서 쓸 것.
 	if (InputManager::GetInstance().GetButtonDown(KeyType::F2))
 	{
 		_debugInvincible = !_debugInvincible;
-		
+
 	}
+	*/
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
 	{

@@ -171,6 +171,7 @@ void Enemy::OnEnter(Actor* other) // other : Player
 		if (bullet && bullet->GetBulletType() == BulletType::Player)
 		{
 			// 플레이어의 총알이다.
+			Game::GetInstance().GetScene()->CreateHitEffect(bullet->GetPos());
 			_hp -= 1;
 			bullet->Destroy();
 

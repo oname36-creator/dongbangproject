@@ -57,10 +57,13 @@ void CollisionManager::Render(HDC hdc)
 		// 그리드 라인 보기
 		drawGridLine(hdc);
 
-		// 디버깅을 위한 충돌체 상태 보기
+		// 디버깅을 위한 충돌체 상태 보기: 플레이어 판정만 그린다(플레이어 탄까지 다 그리면 너무 지저분함).
 		for (auto actor : _collisionCheckList)
 		{
-			actor->GetCollider()->Render(hdc, actor->GetPos());
+			if (actor->GetActorType() != ActorType::Player)
+				continue;
+
+			actor->GetCollider()->RenderDebug(hdc, actor->GetPos());
 		}
 	}
 }

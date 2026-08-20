@@ -6,7 +6,10 @@ class ColliderCircle : public Component
 {
 public:
 	void Init(class Actor* owner, int radius);
-	virtual void Render(HDC hdc, Vector pos) override;
+
+	// 일반 컴포넌트 렌더 루프(Actor::Render)에는 안 걸리도록 Component::Render를 오버라이드하지 않는다.
+	// F1 디버그 토글 켰을 때 CollisionManager가 직접 호출하는 전용 그리기 함수.
+	void RenderDebug(HDC hdc, Vector pos);
 
 	// 실제로 충돌체크가 필요한 셀인지
 	bool CheckCell() { return _checkCell; }

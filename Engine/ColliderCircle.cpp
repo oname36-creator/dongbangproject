@@ -18,7 +18,7 @@ Vector ColliderCircle::GetWorldPos() const
     return _owner->GetPos() + _offset;
 }
 
-void ColliderCircle::Render(HDC hdc, Vector pos)
+void ColliderCircle::RenderDebug(HDC hdc, Vector pos)
 {
     if (nullptr == _owner)
         return;

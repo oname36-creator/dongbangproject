@@ -3,6 +3,7 @@
 #include "InputManager.h"
 #include "SceneManager.h"
 #include "CharacterSelectScene.h"
+#include "GameScene.h"
 #include "ResourceManager.h"
 #include "Texture.h"
 #include "AudioManager.h"
@@ -149,7 +150,8 @@ void TitleScene::Update(float deltaTime)
 			SceneManager::GetInstance().ChangeScene(new CharacterSelectScene());
 			break;
 		case TitleMenuItem::ExtraStage:
-			// TODO: 엑스트라 스테이지 콘텐츠가 아직 없어 자리표시만 유지 (선택해도 동작 없음)
+			// 캐릭터 선택 없이 곧장 GameScene을 엑스트라로 시작한다.
+			SceneManager::GetInstance().ChangeScene(new GameScene(true));
 			break;
 		case TitleMenuItem::Settings:
 			_inSettings = true;

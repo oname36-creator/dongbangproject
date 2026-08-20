@@ -93,8 +93,8 @@ WinAPI(Win32 GDI) 기반 2D 종스크롤 슈팅 게임으로 동방프로젝트(
 
 ## 실행 시 필요한 리소스
 
-- `Resources/`, `Resources/Data/`는 현재 빈 폴더(placeholder)만 있고 실제 이미지(.bmp)나 JSON은 아직 커밋되어 있지 않다.
-- `Game.cpp`의 `Game::Init()`이 `GetCurrentDirectory() / "../Resources/"` 를 계산해서 `ResourceManager`와 `DataManager` 양쪽에 넘긴다.
+- `Resources/`에는 실제 이미지(.bmp)/사운드(.wav) 에셋이, `Resources/Data/ResourceData.json`에는 그 에셋들의 텍스처 키 정의가 커밋되어 있다.
+- `Game.cpp`의 `Game::Init()`이 `GetCurrentDirectory() / "Resources/"` 를 계산해서 `ResourceManager`와 `DataManager` 양쪽에 넘긴다.
 - `DataManager::Load()`는 `Resources/Data/ResourceData.json`을 읽어야 하며, 스키마는 다음과 같다 (`ResourceData::Load` 참고):
   ```json
   { "GameScene": {
@@ -107,7 +107,7 @@ WinAPI(Win32 GDI) 기반 2D 종스크롤 슈팅 게임으로 동방프로젝트(
   }}
   ```
   `Scene::loadResources()`는 이 JSON을 통해서만 텍스처를 로드한다(과거 하드코딩된 `LoadTexture(...)` 호출들은 주석 처리되어 남아있을 뿐 더 이상 쓰이지 않음). 즉 이 JSON과 대응하는 bmp들이 없으면 실행 시 "Failed to open JSON file" 메시지박스가 뜨고 아무 것도 그려지지 않는다.
-- 주의: `../Resources/`는 실행 시점의 프로세스 작업 디렉터리 기준이다. 비주얼 스튜디오 디버거로 실행하면 작업 디렉터리 기본값은 `$(ProjectDir)`인데, `vcxproj`가 레포 루트에 있으므로 이는 레포 루트 자신이 되고, 결과적으로 `../Resources`는 **레포 바깥의 상위 폴더**를 가리키게 된다. 리소스가 로드되지 않으면 디버깅 속성의 Working Directory(또는 실행 시 cwd)부터 확인할 것.
+- 주의: `Resources/`는 실행 시점의 프로세스 작업 디렉터리(cwd) 기준이다. `vcxproj`가 레포 루트에 있어서 비주얼 스튜디오 디버거의 기본 Working Directory(`$(ProjectDir)`)도 레포 루트가 되고, 여기에 `Resources/`를 그대로 붙이면 레포 루트의 `Resources/`를 정확히 가리키므로 VS에서 F5로 실행하면 별도 설정 없이 리소스가 잘 로드된다. 반면 빌드된 exe(`x64/Debug/DongbangProject.exe`)를 직접 실행하면 cwd가 exe가 있는 폴더가 되어 `Resources/`를 못 찾는다 — 이 경우 레포 루트를 작업 디렉터리로 지정해서 실행해야 한다(예: `Start-Process ... -WorkingDirectory <레포 루트>`).
 
 ## 아키텍처
 
