@@ -81,6 +81,12 @@ public:
 		_freeList.push_back((T*)actor);
 	}
 
+	// 지금 대여되어 사용 중인(반환 안 된) 개수
+	int32 GetActiveCount() const
+	{
+		return (int32)_buffer.size() - (int32)_freeList.size();
+	}
+
 private:
 	// 메모리가 할당되어 있는 원본
 	vector<T>	_buffer; // 여기서 [0] 하나 꺼내씀.

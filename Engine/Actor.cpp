@@ -1,7 +1,7 @@
 ﻿#include "pch.h"
 #include "Actor.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "Component.h"
 
 Actor::~Actor()

@@ -12,6 +12,8 @@ enum class KeyType
 	LeftMouse = VK_LBUTTON,
 	RightMouse = VK_RBUTTON,
 
+	PAUSE = VK_ESCAPE,
+
 	Up = VK_UP,
 	Down = VK_DOWN,
 	Left = VK_LEFT,
@@ -20,14 +22,12 @@ enum class KeyType
 
 	KEY_1 = '1',
 	KEY_2 = '2',
+	KEY_3 = '3',
+	KEY_4 = '4',
 
-	// TODO(1주차 Day3~4): 기획서 5장 조작에 필요한 키가 빠져 있다. 여기부터 추가할 것.
-	//  - 저속 이동 : Shift (VK_SHIFT)
-	//  - 기본 공격 : Z ('Z')   ※ 지금은 SpaceBar로 쏘고 있다
-	//  - 폭탄      : X ('X')
-	//  힌트: 이 enum 값은 그대로 Windows 가상 키 코드다. GetState()가 값을 uint8로
-	//        캐스팅해 _states 배열의 인덱스로 쓰므로, 0~255 범위면 추가만 해도 동작한다.
-	//  참고: F1/F2/KEY_1/KEY_2는 이미 있다 → 3주차 디버그 키에 그대로 쓸 수 있다.
+	LOW_SPEED = VK_SHIFT,
+	ATTACK = 'Z',
+	BOOM = 'X',
 
 	W = 'W',
 	A = 'A',
@@ -39,6 +39,7 @@ enum class KeyType
 
 	F1 = VK_F1,
 	F2 = VK_F2,
+	F3 = VK_F3,
 };
 
 enum class KeyState

@@ -6,6 +6,11 @@
 void SpriteAnimRenderer::Init(wstring textureKey)
 {
 	_texture = ResourceManager::GetInstance().GetTexture(textureKey);
+	_animIndexX = 0;
+	_animIndexY = 0;
+	_sumTime = 0;
+	_isEnd = false;
+	_flipX = false;
 }
 
 void SpriteAnimRenderer::Update(float deltaTime)
@@ -73,5 +78,21 @@ void SpriteAnimRenderer::Render(HDC hdc, Vector pos)
 	float srcX = _animIndexX * (float)frameSize.cx;
 	float srcY = _animIndexY * (float)frameSize.cy;
 
-	_texture->Render(hdc, pos, Vector(srcX, srcY));
+	_texture->Render(hdc, pos, Vector(srcX, srcY), _alpha, _flipX);
+}
+
+uint32 SpriteAnimRenderer::GetSizeX() const
+{
+	if (_texture)
+		return _texture->GetFrameSize().cx;
+
+	return 0;
+}
+
+uint32 SpriteAnimRenderer::GetSizeY() const
+{
+	if (_texture)
+		return _texture->GetFrameSize().cy;
+
+	return 0;
 }

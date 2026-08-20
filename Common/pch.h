@@ -22,6 +22,14 @@ namespace fs = std::filesystem;
 // transparent Blt
 #pragma comment(lib, "msimg32.lib")
 
+// PlaySound
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
+
+// XAudio2 (다중 재생용)
+#include <xaudio2.h>
+#pragma comment(lib, "xaudio2.lib")
+
 // Json
 #include <fstream>
 #include "Json/nlohmann/json.hpp" // nlohmann/json 헤더 파일
@@ -158,7 +166,8 @@ struct Vector
 };
 
 // 윈도우 사이즈 변경
-constexpr int32 GWinSizeX = 480;
+constexpr int32 GWindowSizeX = 840;
+constexpr int32 GWinSizeX = 600;
 constexpr int32 GWinSizeY = 800;
 
 // Grid의 한칸 셀 index 정보

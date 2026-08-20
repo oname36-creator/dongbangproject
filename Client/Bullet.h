@@ -5,7 +5,10 @@ class Bullet : public Actor // (Actor=GameObject)
 {
 	using Super = Actor;
 public:
-	void Init(BulletType type);
+	void Init(BulletType type, Vector dir, float speed, bool isHoming = false, float turnSpeed = 180.f, float accel = 0.f,
+			  float preStopTime = 0.f, float launchDelay = 0.f, BulletRedirectMode redirectMode = BulletRedirectMode::None,
+			  wstring customTextureKey = L"", float colliderSizeOverride = -1.f, bool faceDirection = false, float targetSpeed = -1.f,
+			  float lifeTime = -1.f, float fallAccel = 0.f, bool reflectOffWalls = false);
 	virtual void Update(float deltaTime) override;
 	virtual void Render(HDC hdc) override;
 
@@ -24,6 +27,15 @@ public:
 
 	BulletType GetBulletType() const { return _type; }
 
+	// 이미 스폰된 탄의 방향/속도를 외부에서 즉시 바꾼다(가속은 초기화). 카고메 격자탄처럼
+	// 원래 정지해 있다가 다른 오브젝트에 의해 강제로 튕겨나가는 경우에 쓴다.
+	void SetVelocity(Vector dir, float speed);
+
+private:
+	// faceDirection이 켜져있을 때, _dir 기준으로 16방향 중 가까운 회전 텍스처를 골라서 적용한다.
+	// 방향 재조준(redirect) 시 다시 호출해서 렌더링도 같이 돌아가게 한다.
+	void updateFaceDirectionTexture();
+
 private:
 	//class Texture* _texture = nullptr;
 	//class ImageRenderer* _renderer = nullptr;
@@ -33,12 +45,22 @@ private:
 	Vector _dir;		// 발사 방향
 	float _moveSpeed = 500.f;	// 발사 속도
 	BulletType _type;
-};
+	bool _isHoming = false;
+	float _turnSpeed = 180.f;
+	float _accel = 0.f;
+	float _targetSpeed = -1.f;	// -1이면 기존처럼 무제한 가속/감속. 0 이상이면 이 속도에 도달한 순간 가속을 끄고 고정한다.
 
-// 나중에 아이템이 추가되어도 크게 코드를 수정해야할 일이 없다.
-class Item : public Actor
-{
-private:
-	class Texture* _texture = nullptr;
-	class ColliderCircle* _collider = nullptr;
+	float _preStopTime = 0.f;
+	float _launchDelay = 0.f;
+	BulletRedirectMode _redirectMode = BulletRedirectMode::None;
+	float _fallAccel = 0.f;	// BulletRedirectMode::Down 전환 시 적용할 가속도(스타보우 브레이크 낙하용)
+
+	// true면 화면 좌/우/위 벽에 닿는 순간 그 축의 방향만 반전(입사각=반사각)하고 딱 1번만 반사한다.
+	// 아래쪽은 반사 대상이 아니라 기존 화면밖 삭제 로직을 그대로 탄다.
+	bool _reflectOffWalls = false;
+
+	float _lifeTime = -1.f;	// -1이면 기존처럼 화면 밖으로 나가야만 삭제. 0 이상이면 그 시간(초)이 지나면 위치와 무관하게 자동 삭제.
+
+	bool _faceDirection = false;
+	wstring _baseTextureKey;	// faceDirection용 회전 접미사가 붙기 전의 원본 텍스처 키
 };

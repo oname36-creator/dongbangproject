@@ -26,7 +26,7 @@ void ImageRenderer::Render(HDC hdc, Vector pos)
 			srcPos.y = (float)_iY * _texture->GetFrameSize().cy;
 		}
 
-		_texture->Render(hdc, pos, srcPos);
+		_texture->Render(hdc, pos, srcPos, _alpha);
 	}
 }
 

@@ -13,6 +13,8 @@ public:
 	void Init(HWND hwnd, fs::path directory);
 	void Cleanup();
 
+	fs::path GetResourcePath() const { return _resourcePath; }
+
 	void LoadTexture(wstring key, wstring texturePath, int32 transparent, 
 					 int32 row = 1, int32 col = 1, float dur = 0);
 	class Texture* GetTexture(wstring key);

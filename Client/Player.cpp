@@ -2,104 +2,176 @@
 #include "Player.h"
 #include "InputManager.h"
 #include "Game.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "Enemy.h"
 #include "Bullet.h"
+#include "Item.h"
 #include "ColliderCircle.h"
+#include "ResourceManager.h"
+#include "ImageRenderer.h"
+#include "AudioManager.h"
+#include <random>
+
+static random_device rd;
+static mt19937 gen(rd());
+
+constexpr int32 PLAYER_IDLE_FRAME_COUNT = 4;
+constexpr float PLAYER_IDLE_FRAME_DURATION = 0.15f;	// 프레임당 재생 시간(4프레임 반복이면 한 바퀴에 0.6초)
 
 void Player::Init()
 {
 	loadTexture(L"Player");
-
+	_satelliteRenderer = new ImageRenderer();
+	_satelliteRenderer->Init(L"PlayerSatellite");
 	// 충돌체가 만들어져있는데, 충돌매니저에서 충돌체크를 실행해야하는 '주체'
 	if (_collider)
 	{
 		_collider->SetCheckCell(true);
+		_collider->Init(this,4);
+		// 스프라이트/이동은 그대로 두고, 판정 원 중심만 4px 아래로.
+		_collider->SetOffset(Vector(0.f, 4.f));
 	}
-
-	// TODO(1주차 Day3~4): 플레이어 히트박스를 작게 줄일 것 (기획서 4장)
-	//  현재: Airplane::loadTexture()가 스프라이트 크기(renderer->GetSizeX())로 충돌 반지름을 잡는다.
-	//        → 기체 그림 전체가 판정이라 탄막을 피하는 게 사실상 불가능하다.
-	//  목표: 기체가 32x32px이면 판정은 '반지름 4~6px 원'. 탄막 게임의 손맛을 좌우하는 핵심이다.
-	//  할 일: 여기서 _collider->Init(this, 5) 처럼 작은 값으로 다시 설정한다.
-	//  참고: 적(Enemy)의 판정은 반대로 넉넉해야 잘 맞는 느낌이 난다. 플레이어만 줄여라.
 }
 
 void Player::Update(float deltaTime)
 {
 	Super::Update(deltaTime);
+	_satelliteSpacing += (subSpacing - _satelliteSpacing) * 8.f * deltaTime;   // 8.f = 수렴 속도, 취향껏 조절
 
-	// TODO(1주차 Day3~4): 저속 이동 구현 (기획서 5장)
-	//  목표: Shift를 누르고 있는 동안 이동 속도를 40~50%로 낮춘다.
-	//        탄막 사이를 정밀하게 빠져나가기 위한 필수 기능이다.
-	//  할 일: 아래 이동 코드들이 _moveSpeed를 그대로 쓰고 있다.
-	//        여기서 이번 프레임 속도를 한 번 계산해두고(예: speed = _moveSpeed * (느림? 0.45f : 1.f))
-	//        아래 4개 move() 호출이 그 값을 쓰도록 바꾼다.
-	//  선행: Engine/InputManager.h의 KeyType에 Shift가 없다. 거기부터 추가할 것.
 
-	// TODO(1주차 Day3~4): 무적 시간 처리 (기획서 5장, 피격 후 1.5~2초)
-	//  Player.h에 추가할 _invincibleTime을 여기서 deltaTime만큼 깎아준다.
-	//  0보다 크면 무적 상태 → takeDamage()에서 피해를 무시한다.
-	//  힌트: 무적 중에는 스프라이트를 깜빡이게 하면(짝수 프레임만 그리기) 플레이어가 상태를 알 수 있다.
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::W))
+	if(_invincibleTime > 0.f)
 	{
-		move(0, -_moveSpeed * deltaTime);
+		_invincibleTime -= deltaTime;
 	}
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::S))
+	if(_fireCooldown > 0.f)
 	{
-		move(0, _moveSpeed * deltaTime);
+		_fireCooldown -= deltaTime;
 	}
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::A))
+	if (_subFireCooldown > 0.f)
 	{
-		move(-_moveSpeed * deltaTime, 0);
+		_subFireCooldown -= deltaTime;
 	}
 
-	if (InputManager::GetInstance().GetButtonPressed(KeyType::D))
+	// 좌우 입력 없을 때(idle)만 실제로 쓰이지만, 타이머 자체는 매 프레임 그냥 흘러가게 둔다
+	// (idle로 전환되는 순간 애니메이션이 항상 프레임 0부터 시작하지 않고 자연스럽게 이어지도록).
+	_idleAnimTimer += deltaTime;
+	if (_idleAnimTimer >= PLAYER_IDLE_FRAME_DURATION)
 	{
-		move(_moveSpeed * deltaTime, 0);
+		_idleAnimTimer -= PLAYER_IDLE_FRAME_DURATION;
+		_idleAnimFrame = (_idleAnimFrame + 1) % PLAYER_IDLE_FRAME_COUNT;
 	}
 
-	// TODO(1주차 Day3~4): 자동 연사로 바꿀 것 (기획서 5장)
-	//  현재: GetButtonDown이라 '누르는 순간 딱 1발'만 나간다. 연사하려면 키를 계속 두드려야 한다.
-	//  목표: 키를 누르고 있으면 일정 간격으로 계속 발사된다.
-	//  할 일: _fireCooldown(float) 멤버를 두고 Update에서 deltaTime만큼 깎다가,
-	//        0 이하이고 키가 눌려 있으면(GetButtonPressed) 발사 + 쿨다운 리셋.
-	//  힌트: 간격 0.1초 정도부터 시작해서 감으로 조절해라.
-	//  참고: 발사 키는 기획서상 Z다. SpaceBar를 Z로 바꾸려면 KeyType에 Z를 먼저 추가해야 한다.
-	if (InputManager::GetInstance().GetButtonDown(KeyType::SpaceBar))
+	_speed = _moveSpeed;
+	if(InputManager::GetInstance().GetButtonPressed(KeyType::LOW_SPEED))
 	{
-		Game::GetInstance().GetScene()->CreateBullet(GetPos(), BulletType::Player);
+		_speed *= 0.5f;
+		subSpacing = 10.f;
+
+	}
+	else subSpacing = 30.f;
+	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM) && _boom > 0)
+	{
+		_boom -= 1;
+		Game::GetInstance().GetScene()->BombClearBullets();
+		Game::GetInstance().GetScene()->ShowBombFace();
+		SetInvincible(3.3f);
+	}
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Up))
+	{
+		move(0, -_speed * deltaTime);
 	}
 
-	// TODO(1주차 Day3~4): 폭탄 구현 (기획서 5장)
-	//  목표: X키를 누르면 화면 안의 적 탄환을 전부 지우고, 폭탄 개수를 1 줄인다.
-	//  할 일:
-	//   - 폭탄이 0개면 아무 일도 일어나지 않게 막는다
-	//   - GameScene에 "화면의 적 탄환을 전부 제거" 함수를 만들어 호출한다
-	//  힌트: Scene::GetRenderList(RenderLayer::Bullet)로 탄 목록을 받아
-	//        ActorType이 EnemyBullet인 것만 Destroy()하면 된다.
-	//  함정: 순회하면서 리스트를 직접 건드리면 안 된다. Destroy()는 '삭제 예약'만 하고
-	//        실제 제거는 Scene::Update() 끝에서 일어나므로 그 방식을 그대로 따르면 안전하다.
-	//  참고: 보스 피해와 화면 플래시 연출은 2주차 보스 작업 때 붙여도 된다.
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Down))
+	{
+		move(0, _speed * deltaTime);
+	}
 
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::Left))
+	{
+		move(-_speed * deltaTime, 0);
+	}
+	else if (InputManager::GetInstance().GetButtonPressed(KeyType::Right))
+	{
+		move(_speed * deltaTime, 0);
+	}
+	else
+	{
+		move(0,0); 
+	}
+	/* 디버그 무적 토글. 필요하면 다시 주석 풀어서 쓸 것.
+	if (InputManager::GetInstance().GetButtonDown(KeyType::F2))
+	{
+		_debugInvincible = !_debugInvincible;
+
+	}
+	*/
+
+	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
+	{
+		_powerLevel = getPowerStage();
+		attack();
+	}
 	// 적비행기 가지고와서 충돌체크 수행?
 }
 
 void Player::Render(HDC hdc)
 {
+	if (_invincibleTime > 0.f)
+	{
+		int32 blinkPhase = (int32)(_invincibleTime * 20.f) % 2;
+		if (blinkPhase == 0)
+			return;   // 이번 프레임은 그리지 않음 -> 깜빡임
+	}
+
+	if ( _powerLevel >= 1 && _satelliteRenderer )
+{
+    float t = 1.f - (_satelliteSpacing - 10.f) / (30.f - 10.f);   // 0=펼쳐짐, 1=최소간격
+    float headLift = t * 25.f;
+	float swingBump = t * ( 1.f - t) * 4.f * 20.f;
+	float arc = headLift + swingBump;                    
+
+    Vector pos1 = GetPos();
+    pos1.x -= _satelliteSpacing;
+    pos1.y -= arc;
+    Vector pos2 = GetPos();
+    pos2.x += _satelliteSpacing;
+    pos2.y -= arc;
+    _satelliteRenderer->Render(hdc, pos1);
+    _satelliteRenderer->Render(hdc, pos2);
+}
+
 	Super::Render(hdc);
 }
 
+
 void Player::OnEnter(Actor* other)
 {
-	// 적 총알 or 적 비행기라면 피해입기
+	// 적 총알 or 적 비행기 or 보스 몸체라면 피해입기
 	if (other->GetActorType() == ActorType::Enemy ||
-		other->GetActorType() == ActorType::EnemyBullet)
+		other->GetActorType() == ActorType::EnemyBullet ||
+		other->GetActorType() == ActorType::Boss ||
+		other->GetActorType() == ActorType::EnemyLaser)
 	{
 		takeDamage();
+	}
+	else if (other->GetActorType() == ActorType::Item)
+	{
+		Item* item = static_cast<Item*>(other);
+		if(item->GetKind() == ItemKind::Power)
+		{
+			if(_powerStack < 128 )
+				_powerStack += item->GetPowerValue();
+			if(_powerStack > 128 )
+				_powerStack = 128;
+		}
+		else if ( item -> GetKind() == ItemKind::Score)
+		{
+			Game::GetInstance().GetScene()->AddScore(500);
+		}
+		other->Destroy();
 	}
 }
 
@@ -108,52 +180,176 @@ void Player::move(float x, float y)
 	Vector newPos = GetPos();
 	newPos.x += x;
 	newPos.y += y;
+	if (x < 0)
+    _renderer->Init(L"Player", 0);      // 왼쪽으로 이동 중
+else if (x > 0)
+    _renderer->Init(L"Player", 2);      // 오른쪽으로 이동 중
+else
+    _renderer->Init(L"PlayerIdle", _idleAnimFrame, 0);      // 좌우 입력 없음: idle 반복 애니메이션
 
 	// 양옆
-	if (newPos.x <= GetWidth())
+	if (newPos.x <= GetWidth() * 0.5f)
 	{
-		newPos.x = (float)GetWidth();
+		newPos.x = (float)GetWidth() * 0.5f;
 	}
-	else if (newPos.x >= GWinSizeX - GetWidth())
+	else if (newPos.x >= GWinSizeX - GetWidth() * 0.5f)
 	{
-		newPos.x = (float)GWinSizeX - GetWidth();
+		newPos.x = (float)GWinSizeX - GetWidth() * 0.5f;
 	}
 
 	// 위아래
-	if (newPos.y <= GetHeight())	// 이런 로직들은 world 좌표계로 생각해서 그대로 두고.
+	if (newPos.y <= GetHeight() * 0.5f)	// 이런 로직들은 world 좌표계로 생각해서 그대로 두고.
 	{
-		newPos.y = (float)GetHeight();
+		newPos.y = (float)GetHeight() * 0.5f;
 	}
-	else if (newPos.y >= GWinSizeY - GetHeight())
+	else if (newPos.y >= GWinSizeY - GetHeight() * 0.5f)
 	{
-		newPos.y = (float)GWinSizeY - GetHeight();
+		newPos.y = (float)GWinSizeY - GetHeight() * 0.5f;
 	}
 
 	SetPos(newPos);
 }
 
-// TODO(1주차 Day3~4): 잔기 체계로 다시 쓸 것 (Player.h의 TODO와 한 세트)
-//  현재: 피격당 HP -10. 10대를 맞아야 죽으므로 탄막을 피할 이유가 없다.
-//  목표(기획서 5장):
-//   1) 무적 시간 중이면 즉시 return (연속 피격 방지)
-//   2) 잔기 1 감소
-//   3) 무적 시간 1.5~2초 시작
-//   4) 잔기가 남았으면 시작 위치로 되돌리고, 0이면 게임 오버를 GameScene에 알린다
-//  함정: 지금처럼 Destroy()를 부르면 Player 객체가 사라진다. 그런데 Scene::_player와
-//        UIManager가 이 포인터를 참조하고 있다. 잔기가 남아 있을 때는 죽이지 말고
-//        '위치만 초기화'하는 편이 훨씬 안전하다.
-//        (Scene::removeActor()가 _player를 nullptr로 밀어주긴 하지만, 부활 처리가 복잡해진다)
 void Player::takeDamage()
+{	
+	Vector hitPos = GetPos();
+	int32 _powerdrop =0;
+	if(_invincibleTime > 0.f || _debugInvincible == true)
+	return;
+
+	_lives -= 1;
+	if(_powerStack > 0)
+	{
+		if(_powerStack < 15)
+		_powerdrop =_powerStack;
+		else
+		_powerdrop = 15;
+
+		_powerStack -=15 ;
+		if(_powerStack < 0)
+			_powerStack = 0;
+	}
+	_invincibleTime = 3.3f;
+
+	
+	if(_powerdrop >=8)
 {
-	_hp -= 10;
+	Game::GetInstance().GetScene()->SpawnItem(hitPos, ItemKind::Power, 8, true);
+	for(int32 i = 0; i < (_powerdrop-8); ++i)
+	{
+		Game::GetInstance().GetScene()->SpawnItem(hitPos, ItemKind::Power, 1, true);
+	}
+}
+else
+{
+	for(int32 i = 0; i < _powerdrop; ++i)
+	{
+		Game::GetInstance().GetScene()->SpawnItem(hitPos, ItemKind::Power, 1, true);
+	}
+}
+
+	SetPos(Vector(GWinSizeX * 0.5f, 650.f));
+
+
+
+	AudioManager::GetInstance().Play(L"Hit");
 
 	// 터지는 이펙트 추가
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());
 
 	// 체력이 0이면, 스스로 삭제
-	if (_hp <= 0)
+	if (_lives <= 0)
 	{
 		Destroy();
 	}
 }
 
+void Player::attack()
+{
+		int32 shotCount = 1 + _powerLevel / 2;
+		float spacing = 10.f;
+		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
+
+		constexpr float outerAngleDeg = 2.f;   // 양 끝 2발이 벌어지는 각도
+
+		if (shotCount >= 3)
+		{
+			// 가운데(1 ~ shotCount-2번째)는 기존과 동일한 위치에서 그대로 평행 직선으로 나간다.
+			for (int32 i = 1; i < shotCount - 1; ++i)
+			{
+				Vector firePos(startX + i * spacing, GetPos().y);
+				Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0, -1), 500.f);
+			}
+
+			// 양 끝(0번째, 마지막번째)은 같은 위치에서 각도만 벌어져서 나간다.
+			float rad = DegreeToRadian(outerAngleDeg);
+			Vector leftPos(startX, GetPos().y);
+			Vector rightPos(startX + (shotCount - 1) * spacing, GetPos().y);
+			Game::GetInstance().GetScene()->FireStraight(leftPos, BulletType::Player, Vector(-sinf(rad), -cosf(rad)), 500.f);
+			Game::GetInstance().GetScene()->FireStraight(rightPos, BulletType::Player, Vector( sinf(rad), -cosf(rad)), 500.f);
+		}
+		else
+		{
+			for(int32 i = 0; i < shotCount; ++i)
+			{
+				Vector firePos(startX + i * spacing, GetPos().y);
+				Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+			}
+		}
+		_fireCooldown = _fireInterval;
+
+		AudioManager::GetInstance().Play(L"Fire");
+
+		if(_subFireCooldown <= 0.f && _powerLevel >= 1)
+		{
+		Vector dir(0, -1);
+		Actor* target = Game::GetInstance().GetScene()->FindNearestEnemy(GetPos());
+		if (target != nullptr)
+		{
+			dir = target->GetPos() - GetPos();
+			dir.Normalize();
+		}
+		Vector pos1 = GetPos();
+		Vector pos2 = GetPos();
+
+		pos1.x -= _satelliteSpacing;
+    	pos2.x += _satelliteSpacing;
+
+		Game::GetInstance().GetScene()->FireHoming(pos1, BulletType::Player, dir, 400.f, 240.f);
+		Game::GetInstance().GetScene()->FireHoming(pos2, BulletType::Player, dir, 400.f, 240.f);
+
+		_subFireCooldown = _subFireInterval - (_powerLevel - 1) * 0.05f;
+		if(_subFireCooldown < 0.1f)
+			_subFireCooldown = 0.1f;
+
+		
+		}
+}
+
+int32 Player::getPowerStage() const
+{
+	
+	if(_powerStack < 8)
+		return 0;
+	else if(_powerStack >= 8 && _powerStack < 16)
+		return 1;
+	else if(_powerStack >= 16 && _powerStack < 32)
+		return 2;
+	else if(_powerStack >= 32 && _powerStack < 48)
+		return 3;
+	else if(_powerStack >= 48 && _powerStack < 64)
+		return 4;
+	else if(_powerStack >= 64 && _powerStack < 80)
+		return 5;
+	else if(_powerStack >= 80 && _powerStack < 96)
+		return 6;
+	else if(_powerStack >= 96 && _powerStack < 128)
+		return 7;
+	else
+		return 8;
+}
+
+Player :: ~Player()
+{
+	delete _satelliteRenderer;
+}

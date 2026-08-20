@@ -5,10 +5,14 @@
 #include "Util.h"
 #include "ResourceManager.h"
 #include "Texture.h"
-#include "Scene.h"
+#include "GameScene.h"
 #include "CollisionManager.h"
 #include "DataManager.h"
 #include "UIManager.h"
+#include "SceneManager.h"
+#include "LoadingScene.h"
+#include "AudioManager.h"
+#include "SaveManager.h"
 
 void Game::Init(HWND hwnd)
 {
@@ -40,41 +44,41 @@ void Game::Init(HWND hwnd)
 
 	// full path c:// /// // /
 	// 리소스 매니저 초기화
-	// TODO(1주차 Day0): 리소스 경로 고정 ★ 다른 무엇보다 먼저 할 일
-	//  문제: GetCurrentDirectory()는 '실행 시점의 작업 디렉터리'를 돌려준다.
-	//        VS 디버거로 실행하면 작업 디렉터리 기본값이 $(ProjectDir) = 레포 루트인데,
-	//        거기에 "../Resources/"를 붙이면 레포 '바깥'을 가리키게 된다 → 리소스 로드 실패.
-	//  할 일: 아래 L"../Resources/" 를 L"Resources/" 로 바꾸고,
-	//        프로젝트 속성 > 디버깅 > 작업 디렉터리가 $(ProjectDir)인지 확인한다.
-	//  검증: 실행했을 때 "Failed to open JSON file" 메시지박스가 안 뜨면 성공.
-	//  참고: 이 경로 하나를 ResourceManager와 DataManager가 함께 쓴다(바로 아래 줄들).
-	//        그리고 Resources/ 폴더가 지금 비어 있다 → 플레이스홀더 bmp와
-	//        Resources/Data/ResourceData.json 을 먼저 채워야 화면에 뭐라도 나온다.
 	wchar_t buffer[MAX_PATH];
 	DWORD length = ::GetCurrentDirectory(MAX_PATH, buffer);
-	fs::path currentPath = fs::path(buffer) / L"../Resources/";
+	fs::path currentPath = fs::path(buffer) / L"Resources/";
 	ResourceManager::GetInstance().Init(hwnd, currentPath);
 
 	// DataManager 초기화
 	DataManager::GetInstance().Init(currentPath);
 	DataManager::GetInstance().Load();
 
-	// Scene 초기화
-	// TODO(1주차 Day1~2): Game이 씬을 직접 소유하지 않도록 구조를 바꿀 것
-	//  현재: Game이 Scene 1개를 new로 만들어 끝까지 들고 있다 → 타이틀/결과 화면으로 넘어갈 수 없다.
-	//  목표(기획서 3장): TitleScene / GameScene / ResultScene 전환.
-	//  할 일:
-	//   1) Scene을 추상 베이스로 만든다 (virtual ~Scene(), virtual Init/Cleanup/Update/Render)
-	//   2) 지금 Scene의 내용을 GameScene으로 옮기고, TitleScene/ResultScene은 껍데기로 추가한다
-	//      (배경 + 안내 문구 + 키 입력 하나면 충분하다. 여기서 시간 쓰지 말 것)
-	//   3) Engine/ 에 SceneManager 싱글톤을 만들고, 아래 2줄과 Cleanup/Update/Render의
-	//      _scene 접근을 전부 SceneManager 호출로 교체한다
-	//  함정: 씬 교체를 '즉시' 하면 안 된다. Update() 도중에 현재 씬을 delete하면
-	//        호출 스택이 이미 죽은 객체 위에서 계속 돌아 크래시한다.
-	//        → '예약해두고 프레임 끝에서 교체'하는 방식을 써라.
-	//        이 프로젝트에 이미 같은 패턴이 있다: Scene::_reservedAdd / _reservedRemove 를 참고.
-	_scene = new Scene();
-	_scene->Init();
+	// SaveManager 초기화 (재실행해도 유지되는 진행 상황 로드)
+	SaveManager::GetInstance().Init(currentPath);
+
+	// AudioManager 초기화
+	AudioManager::GetInstance().Init(currentPath);
+	AudioManager::GetInstance().LoadSound(L"Fire", L"Fire.wav");
+	AudioManager::GetInstance().LoadSound(L"Hit", L"Hit.wav");
+	AudioManager::GetInstance().LoadSound(L"Explosion", L"Explosion.wav");
+	AudioManager::GetInstance().LoadSound(L"TitleBGM", L"TitleBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"TitleSelect", L"TitleSelect.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage1WaveBGM", L"Stage1WaveBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage1BossBGM", L"Stage1BossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage2WaveBGM", L"Stage2WaveBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage2BossBGM", L"Stage2BossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage3WaveBGM", L"Stage3WaveBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage3MidBossBGM", L"Stage3MidBossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage3BossBGM", L"Stage3BossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"ExtraBGM", L"ExtraBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"EndingBGM", L"EndingBGM.wav");
+
+	// 저장된 볼륨 설정 적용 (SaveManager가 AudioManager보다 먼저 초기화되어 있어야 함)
+	AudioManager::GetInstance().SetBGMVolume(SaveManager::GetInstance().GetBGMVolume());
+	AudioManager::GetInstance().SetSFXVolume(SaveManager::GetInstance().GetSFXVolume());
+
+	// GameScene 초기화
+	SceneManager::GetInstance().ChangeScene(new LoadingScene());
 
 	// CollisionManager 초기화
 	CollisionManager::GetInstance().Init();
@@ -83,12 +87,11 @@ void Game::Init(HWND hwnd)
 
 void Game::Cleanup()
 {
-	_scene->Cleanup();
-	delete _scene;
-	_scene = nullptr;
+	SceneManager::GetInstance().Cleanup();
 
 	// 매니저들 각자 정리가 필요한것들은 정리해준다.
 	ResourceManager::GetInstance().Cleanup();
+	AudioManager::GetInstance().Cleanup();
 }
 
 void Game::Update()
@@ -100,28 +103,31 @@ void Game::Update()
 	InputManager::GetInstance().Update();
 
 	// Scene 업데이트
-	if (_scene)
-	{
-		_scene->Update(TimeManager::GetInstance().GetDT());
-	}
+	SceneManager::GetInstance().Update(TimeManager :: GetInstance().GetDT());
 
 	// 모든 Update가 끝나고 좌표 갱신이 완료된 후, 충돌체크 수행
 	UIManager::GetInstance().Update(TimeManager::GetInstance().GetDT());
 	CollisionManager::GetInstance().Update();
+
+	// 재생이 끝난 소스 보이스 정리
+	AudioManager::GetInstance().Update();
 }
 
 void Game::Render()
 {
 	// 각종 렌더링 로직 처리
 	// Scene의 모든 객체 렌더링
-	if (_scene)
-	{
-		_scene->Render(_hdcBack);
-	}
+	SceneManager::GetInstance().Render(_hdcBack);
 
 	CollisionManager::GetInstance().Render(_hdcBack);
 
 	UIManager::GetInstance().Render(_hdcBack);
+
+	// UI(사이드바)보다 나중에 그려야 하는 오버레이(스테이지 결과 화면 등) — UI 위까지 덮는다.
+	if (Scene* curScene = SceneManager::GetInstance().GetCurrentScene())
+	{
+		curScene->RenderOverlay(_hdcBack);
+	}
 
 	// 현재 FPS 를 출력
 	{
@@ -134,6 +140,11 @@ void Game::Render()
 	BitBlt(_hdc, 0, 0, _rect.right, _rect.bottom, _hdcBack, 0, 0, SRCCOPY);
 
 	PatBlt(_hdcBack, 0, 0, _rect.right, _rect.bottom, WHITENESS);
-}
 
+	
+}
+class GameScene* Game::GetScene() const
+{
+	return dynamic_cast<GameScene*>(SceneManager::GetInstance().GetCurrentScene());
+}
 
