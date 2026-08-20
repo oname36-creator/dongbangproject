@@ -17,4 +17,6 @@ private:
 
 private:
 	class Texture* _hpTexture = nullptr;
+	HFONT _logoFont = nullptr;
+	HFONT _statFont = nullptr;	// Score/Life/Bomb/Power, Phase 표시용(로고보다 작은 크기)
 };

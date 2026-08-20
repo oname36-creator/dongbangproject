@@ -20,7 +20,7 @@ void Item::Init(Vector pos, ItemKind kind, int32 powerValue, bool burst, bool au
 	if (burst)
 	{
 		// 위로 발사됐다가 중력에 의해 서서히 느려지고, 다시 천천히 떨어진다.
-		uniform_int_distribution<int> vxDist(-150, 150);
+		uniform_int_distribution<int> vxDist(-80, 80);
 		uniform_int_distribution<int> vyDist(-550, -350);
 		_velocityX = (float)vxDist(gen);
 		_velocityY = (float)vyDist(gen);

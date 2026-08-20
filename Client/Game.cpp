@@ -10,7 +10,9 @@
 #include "DataManager.h"
 #include "UIManager.h"
 #include "SceneManager.h"
-#include "TitleScene.h"
+#include "LoadingScene.h"
+#include "AudioManager.h"
+#include "SaveManager.h"
 
 void Game::Init(HWND hwnd)
 {
@@ -51,8 +53,32 @@ void Game::Init(HWND hwnd)
 	DataManager::GetInstance().Init(currentPath);
 	DataManager::GetInstance().Load();
 
+	// SaveManager 초기화 (재실행해도 유지되는 진행 상황 로드)
+	SaveManager::GetInstance().Init(currentPath);
+
+	// AudioManager 초기화
+	AudioManager::GetInstance().Init(currentPath);
+	AudioManager::GetInstance().LoadSound(L"Fire", L"Fire.wav");
+	AudioManager::GetInstance().LoadSound(L"Hit", L"Hit.wav");
+	AudioManager::GetInstance().LoadSound(L"Explosion", L"Explosion.wav");
+	AudioManager::GetInstance().LoadSound(L"TitleBGM", L"TitleBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"TitleSelect", L"TitleSelect.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage1WaveBGM", L"Stage1WaveBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage1BossBGM", L"Stage1BossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage2WaveBGM", L"Stage2WaveBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage2BossBGM", L"Stage2BossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage3WaveBGM", L"Stage3WaveBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage3MidBossBGM", L"Stage3MidBossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"Stage3BossBGM", L"Stage3BossBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"ExtraBGM", L"ExtraBGM.wav");
+	AudioManager::GetInstance().LoadSound(L"EndingBGM", L"EndingBGM.wav");
+
+	// 저장된 볼륨 설정 적용 (SaveManager가 AudioManager보다 먼저 초기화되어 있어야 함)
+	AudioManager::GetInstance().SetBGMVolume(SaveManager::GetInstance().GetBGMVolume());
+	AudioManager::GetInstance().SetSFXVolume(SaveManager::GetInstance().GetSFXVolume());
+
 	// GameScene 초기화
-	SceneManager::GetInstance().ChangeScene(new TitleScene());
+	SceneManager::GetInstance().ChangeScene(new LoadingScene());
 
 	// CollisionManager 초기화
 	CollisionManager::GetInstance().Init();
@@ -65,6 +91,7 @@ void Game::Cleanup()
 
 	// 매니저들 각자 정리가 필요한것들은 정리해준다.
 	ResourceManager::GetInstance().Cleanup();
+	AudioManager::GetInstance().Cleanup();
 }
 
 void Game::Update()
@@ -81,6 +108,9 @@ void Game::Update()
 	// 모든 Update가 끝나고 좌표 갱신이 완료된 후, 충돌체크 수행
 	UIManager::GetInstance().Update(TimeManager::GetInstance().GetDT());
 	CollisionManager::GetInstance().Update();
+
+	// 재생이 끝난 소스 보이스 정리
+	AudioManager::GetInstance().Update();
 }
 
 void Game::Render()
@@ -92,6 +122,12 @@ void Game::Render()
 	CollisionManager::GetInstance().Render(_hdcBack);
 
 	UIManager::GetInstance().Render(_hdcBack);
+
+	// UI(사이드바)보다 나중에 그려야 하는 오버레이(스테이지 결과 화면 등) — UI 위까지 덮는다.
+	if (Scene* curScene = SceneManager::GetInstance().GetCurrentScene())
+	{
+		curScene->RenderOverlay(_hdcBack);
+	}
 
 	// 현재 FPS 를 출력
 	{

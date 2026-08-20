@@ -147,11 +147,17 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="Client\Enemy.h" />
+    <ClInclude Include="Client\BossIllusion.h" />
     <ClInclude Include="Client\Item.h" />
+    <ClInclude Include="Client\Laser.h" />
+    <ClInclude Include="Client\LaserSegment.h" />
     <ClInclude Include="Common\framework.h" />
     <ClInclude Include="Client\Game.h" />
     <ClInclude Include="Client\GameScene.h" />
     <ClInclude Include="Client\DongbangProject.h" />
+    <ClInclude Include="Engine\AudioManager.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="Engine\ImageRenderer.h" />
     <ClInclude Include="Engine\InputManager.h" />
     <ClInclude Include="Engine\ObjectPool.h" />
@@ -173,11 +179,17 @@
     <ClInclude Include="Common\Util.h" />
     <ClInclude Include="Client\WorldBG.h" />
     <ClInclude Include="Client\TitleScene.h" />
+    <ClInclude Include="Client\LoadingScene.h" />
+    <ClInclude Include="Client\CharacterSelectScene.h" />
     <ClInclude Include="Client\ResultScene.h" />
     <ClInclude Include="Client\EndingScene.h" />
+    <ClInclude Include="Engine\SaveManager.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Engine\Actor.cpp" />
+    <ClCompile Include="Engine\AudioManager.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Client\Airplane.cpp" />
     <ClCompile Include="Client\Background.cpp" />
     <ClCompile Include="Client\Bullet.cpp" />
@@ -191,7 +203,10 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Client\Enemy.cpp" />
+    <ClCompile Include="Client\BossIllusion.cpp" />
     <ClCompile Include="Client\Item.cpp" />
+    <ClCompile Include="Client\Laser.cpp" />
+    <ClCompile Include="Client\LaserSegment.cpp" />
     <ClCompile Include="Client\Game.cpp" />
     <ClCompile Include="Client\GameScene.cpp" />
     <ClCompile Include="Client\DongbangProject.cpp" />
@@ -215,8 +230,11 @@
     <ClCompile Include="Common\Util.cpp" />
     <ClCompile Include="Client\WorldBG.cpp" />
     <ClCompile Include="Client\TitleScene.cpp" />
+    <ClCompile Include="Client\LoadingScene.cpp" />
+    <ClCompile Include="Client\CharacterSelectScene.cpp" />
     <ClCompile Include="Client\ResultScene.cpp" />
     <ClCompile Include="Client\EndingScene.cpp" />
+    <ClCompile Include="Engine\SaveManager.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Client\DongbangProject.rc" />

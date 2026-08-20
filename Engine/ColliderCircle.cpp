@@ -10,7 +10,15 @@ void ColliderCircle::Init(Actor* owner, int radius)
     _radius = radius;
 }
 
-void ColliderCircle::Render(HDC hdc, Vector pos)
+Vector ColliderCircle::GetWorldPos() const
+{
+    if (nullptr == _owner)
+        return _offset;
+
+    return _owner->GetPos() + _offset;
+}
+
+void ColliderCircle::RenderDebug(HDC hdc, Vector pos)
 {
     if (nullptr == _owner)
         return;
@@ -22,7 +30,7 @@ void ColliderCircle::Render(HDC hdc, Vector pos)
     HBRUSH hOldBrush = (HBRUSH)SelectObject(hdc, hBrush);
 
     // 원의 중심과 반지름 설정
-    Vector screenPos = Game::GetInstance().GetScene()->ConvertWorldToScreen(_owner->GetPos());
+    Vector screenPos = Game::GetInstance().GetScene()->ConvertWorldToScreen(GetWorldPos());
 
     int32 left = (int32)(screenPos.x - _radius);
     int32 top = (int32)(screenPos.y - _radius);
@@ -46,7 +54,7 @@ bool ColliderCircle::CheckCollision(ColliderCircle* other)
     if (nullptr == other)
         return false; 
 
-    Vector size = _owner->GetPos() - other->_owner->GetPos();
+    Vector size = GetWorldPos() - other->GetWorldPos();
     float distance = size.Length();  // 두 액터의 거리 계산
 
     // 반지름 두개 합친 길이보다, 거리가 짧다면, 겹친것이다.

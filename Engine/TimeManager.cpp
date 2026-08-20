@@ -31,6 +31,10 @@ void TimeManager::Update()
 		_frameCount = 0;
 	}
 
+}
+
+void TimeManager::UpdateTimers()
+{
 	// 타이머 업데이트
 	// 타이머 호출
 	for (auto& iter : _timers)
@@ -38,7 +42,7 @@ void TimeManager::Update()
 		if(_removeTimers.find(iter.GetId()) != _removeTimers.end())
 		continue;
 		iter.Update(_deltaTime);
-		
+
 	}
 
 	// 제거 리스트

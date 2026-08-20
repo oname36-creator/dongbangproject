@@ -49,6 +49,12 @@
     <ClInclude Include="Engine\ResourceManager.h">
       <Filter>Engine</Filter>
     </ClInclude>
+    <ClInclude Include="Engine\AudioManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
+    <ClInclude Include="Engine\SaveManager.h">
+      <Filter>Engine</Filter>
+    </ClInclude>
     <ClInclude Include="Engine\Singleton.h">
       <Filter>Engine</Filter>
     </ClInclude>
@@ -82,7 +88,16 @@
     <ClInclude Include="Client\Enemy.h">
       <Filter>Client\Actors</Filter>
     </ClInclude>
+    <ClInclude Include="Client\BossIllusion.h">
+      <Filter>Client\Actors</Filter>
+    </ClInclude>
     <ClInclude Include="Client\Item.h">
+      <Filter>Client\Actors</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\Laser.h">
+      <Filter>Client\Actors</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\LaserSegment.h">
       <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\Game.h">
@@ -107,6 +122,12 @@
       <Filter>Client\Actors</Filter>
     </ClInclude>
     <ClInclude Include="Client\TitleScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\LoadingScene.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="Client\CharacterSelectScene.h">
       <Filter>Client</Filter>
     </ClInclude>
     <ClInclude Include="Client\ResultScene.h">
@@ -165,6 +186,12 @@
     <ClCompile Include="Engine\ResourceManager.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
+    <ClCompile Include="Engine\AudioManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
+    <ClCompile Include="Engine\SaveManager.cpp">
+      <Filter>Engine</Filter>
+    </ClCompile>
     <ClCompile Include="Engine\SpriteRenderer.cpp">
       <Filter>Engine</Filter>
     </ClCompile>
@@ -195,7 +222,16 @@
     <ClCompile Include="Client\Enemy.cpp">
       <Filter>Client\Actors</Filter>
     </ClCompile>
+    <ClCompile Include="Client\BossIllusion.cpp">
+      <Filter>Client\Actors</Filter>
+    </ClCompile>
     <ClCompile Include="Client\Item.cpp">
+      <Filter>Client\Actors</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\Laser.cpp">
+      <Filter>Client\Actors</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\LaserSegment.cpp">
       <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\Game.cpp">
@@ -220,6 +256,12 @@
       <Filter>Client\Actors</Filter>
     </ClCompile>
     <ClCompile Include="Client\TitleScene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\LoadingScene.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="Client\CharacterSelectScene.cpp">
       <Filter>Client</Filter>
     </ClCompile>
     <ClCompile Include="Client\ResultScene.cpp">

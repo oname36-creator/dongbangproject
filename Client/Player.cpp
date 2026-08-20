@@ -9,10 +9,14 @@
 #include "ColliderCircle.h"
 #include "ResourceManager.h"
 #include "ImageRenderer.h"
+#include "AudioManager.h"
 #include <random>
 
 static random_device rd;
 static mt19937 gen(rd());
+
+constexpr int32 PLAYER_IDLE_FRAME_COUNT = 4;
+constexpr float PLAYER_IDLE_FRAME_DURATION = 0.15f;	// 프레임당 재생 시간(4프레임 반복이면 한 바퀴에 0.6초)
 
 void Player::Init()
 {
@@ -24,6 +28,8 @@ void Player::Init()
 	{
 		_collider->SetCheckCell(true);
 		_collider->Init(this,4);
+		// 스프라이트/이동은 그대로 두고, 판정 원 중심만 4px 아래로.
+		_collider->SetOffset(Vector(0.f, 4.f));
 	}
 }
 
@@ -49,6 +55,15 @@ void Player::Update(float deltaTime)
 		_subFireCooldown -= deltaTime;
 	}
 
+	// 좌우 입력 없을 때(idle)만 실제로 쓰이지만, 타이머 자체는 매 프레임 그냥 흘러가게 둔다
+	// (idle로 전환되는 순간 애니메이션이 항상 프레임 0부터 시작하지 않고 자연스럽게 이어지도록).
+	_idleAnimTimer += deltaTime;
+	if (_idleAnimTimer >= PLAYER_IDLE_FRAME_DURATION)
+	{
+		_idleAnimTimer -= PLAYER_IDLE_FRAME_DURATION;
+		_idleAnimFrame = (_idleAnimFrame + 1) % PLAYER_IDLE_FRAME_COUNT;
+	}
+
 	_speed = _moveSpeed;
 	if(InputManager::GetInstance().GetButtonPressed(KeyType::LOW_SPEED))
 	{
@@ -57,10 +72,12 @@ void Player::Update(float deltaTime)
 
 	}
 	else subSpacing = 30.f;
-	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM))
+	if(InputManager::GetInstance().GetButtonDown(KeyType::BOOM) && _boom > 0)
 	{
 		_boom -= 1;
 		Game::GetInstance().GetScene()->BombClearBullets();
+		Game::GetInstance().GetScene()->ShowBombFace();
+		SetInvincible(3.3f);
 	}
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::Up))
 	{
@@ -84,11 +101,13 @@ void Player::Update(float deltaTime)
 	{
 		move(0,0); 
 	}
+	/* 디버그 무적 토글. 필요하면 다시 주석 풀어서 쓸 것.
 	if (InputManager::GetInstance().GetButtonDown(KeyType::F2))
 	{
 		_debugInvincible = !_debugInvincible;
-		
+
 	}
+	*/
 
 	if (InputManager::GetInstance().GetButtonPressed(KeyType::ATTACK) && _fireCooldown <= 0.f)
 	{
@@ -130,9 +149,11 @@ void Player::Render(HDC hdc)
 
 void Player::OnEnter(Actor* other)
 {
-	// 적 총알 or 적 비행기라면 피해입기
+	// 적 총알 or 적 비행기 or 보스 몸체라면 피해입기
 	if (other->GetActorType() == ActorType::Enemy ||
-		other->GetActorType() == ActorType::EnemyBullet)
+		other->GetActorType() == ActorType::EnemyBullet ||
+		other->GetActorType() == ActorType::Boss ||
+		other->GetActorType() == ActorType::EnemyLaser)
 	{
 		takeDamage();
 	}
@@ -164,7 +185,7 @@ void Player::move(float x, float y)
 else if (x > 0)
     _renderer->Init(L"Player", 2);      // 오른쪽으로 이동 중
 else
-    _renderer->Init(L"Player", 1);      // 좌우 입력 없음
+    _renderer->Init(L"PlayerIdle", _idleAnimFrame, 0);      // 좌우 입력 없음: idle 반복 애니메이션
 
 	// 양옆
 	if (newPos.x <= GetWidth() * 0.5f)
@@ -231,8 +252,7 @@ else
 
 
 
-	fs::path hitPath = ResourceManager::GetInstance().GetResourcePath() / L"Hit.wav";
-	::PlaySound(hitPath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+	AudioManager::GetInstance().Play(L"Hit");
 
 	// 터지는 이펙트 추가
 	Game::GetInstance().GetScene()->CreateEffect(GetPos());
@@ -250,15 +270,35 @@ void Player::attack()
 		float spacing = 10.f;
 		float startX = GetPos().x - spacing * (shotCount - 1)/ 2.f;
 
-		for(int32 i = 0; i < shotCount; ++i)
+		constexpr float outerAngleDeg = 2.f;   // 양 끝 2발이 벌어지는 각도
+
+		if (shotCount >= 3)
 		{
-			Vector firePos(startX + i * spacing, GetPos().y);
-			Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+			// 가운데(1 ~ shotCount-2번째)는 기존과 동일한 위치에서 그대로 평행 직선으로 나간다.
+			for (int32 i = 1; i < shotCount - 1; ++i)
+			{
+				Vector firePos(startX + i * spacing, GetPos().y);
+				Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0, -1), 500.f);
+			}
+
+			// 양 끝(0번째, 마지막번째)은 같은 위치에서 각도만 벌어져서 나간다.
+			float rad = DegreeToRadian(outerAngleDeg);
+			Vector leftPos(startX, GetPos().y);
+			Vector rightPos(startX + (shotCount - 1) * spacing, GetPos().y);
+			Game::GetInstance().GetScene()->FireStraight(leftPos, BulletType::Player, Vector(-sinf(rad), -cosf(rad)), 500.f);
+			Game::GetInstance().GetScene()->FireStraight(rightPos, BulletType::Player, Vector( sinf(rad), -cosf(rad)), 500.f);
+		}
+		else
+		{
+			for(int32 i = 0; i < shotCount; ++i)
+			{
+				Vector firePos(startX + i * spacing, GetPos().y);
+				Game::GetInstance().GetScene()->FireStraight(firePos, BulletType::Player, Vector(0,-1), 500.f);
+			}
 		}
 		_fireCooldown = _fireInterval;
 
-		fs::path firePath = ResourceManager::GetInstance().GetResourcePath() / L"Fire.wav";
-		::PlaySound(firePath.c_str(), nullptr, SND_FILENAME | SND_ASYNC);
+		AudioManager::GetInstance().Play(L"Fire");
 
 		if(_subFireCooldown <= 0.f && _powerLevel >= 1)
 		{
